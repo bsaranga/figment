@@ -25,6 +25,11 @@ import {
   resolveStage,
   stageCallGlsl,
 } from "./materials/stage.js";
+import {
+  GLASS_GLSL,
+  resolveGlass,
+  glassCallGlsl,
+} from "./materials/glass.js";
 import { FigmentUnsupportedError } from "@figment/host";
 
 type TexElementSubImage2D = (
@@ -84,6 +89,8 @@ function fragmentSrc(
     materialOp = reliefCallGlsl(resolveRelief(material));
   } else if (material && material.kind === "stage") {
     materialOp = stageCallGlsl(resolveStage(material));
+  } else if (material && material.kind === "glass") {
+    materialOp = glassCallGlsl(resolveGlass(material));
   }
 
   return `
@@ -94,6 +101,7 @@ uniform float u_alpha;
 ${EFFECT_GLSL_LIB}
 ${RELIEF_GLSL}
 ${STAGE_GLSL}
+${GLASS_GLSL}
 ${customFns.join("\n")}
 void main() {
   vec2 uv = v_uv;

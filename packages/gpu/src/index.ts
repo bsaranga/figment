@@ -73,3 +73,15 @@ export {
   type StageDesc,
   type ResolvedStage,
 } from "./materials/stage.js";
+
+export {
+  resolveGlass,
+  setGlass,
+  getGlass,
+  clearGlassMaterials,
+  glassCallGlsl,
+  GLASS_GLSL,
+  GLASS_REFRACTION_MAX,
+  type GlassDesc,
+  type ResolvedGlass,
+} from "./materials/glass.js";

@@ -31,6 +31,13 @@ export interface CompositeLayerInput {
         tint?: string;
         vignette?: number;
         grain?: number;
+      }
+    | {
+        kind: "glass";
+        ior?: number;
+        tint?: string;
+        dispersion?: number;
+        frost?: number;
       };
 }
 
