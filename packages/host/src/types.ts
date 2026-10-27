@@ -60,6 +60,11 @@ export interface HostState {
   backend: HostBackend;
   health: "idle" | "pending" | "healthy" | "failed";
   supported: boolean;
+  /**
+   * M2c seamless first enable: true while the host canvas is still hidden
+   * (opacity 0) waiting for a complete first frame. False after swap.
+   */
+  pendingEnable: boolean;
   canvasGrid: Vec2;
   cssSize: Vec2;
   unitScale: Vec2;
@@ -74,6 +79,8 @@ export interface HostState {
     inputCaptures: number;
     nestedCanvasMarks: number;
     skippedFrames: number;
+    /** M2c: seamless swaps performed (0 until first complete frame reveals). */
+    seamlessSwaps: number;
   };
   lastError?: string;
 }

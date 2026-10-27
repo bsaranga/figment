@@ -10,6 +10,8 @@ export interface Metrics {
   inputCaptures: number;
   nestedCanvasMarks: number;
   skippedFrames: number;
+  /** M2c: seamless swaps performed (0 until first complete frame reveals). */
+  seamlessSwaps: number;
 }
 
 export function createMetrics(): Metrics {
@@ -21,6 +23,7 @@ export function createMetrics(): Metrics {
     inputCaptures: 0,
     nestedCanvasMarks: 0,
     skippedFrames: 0,
+    seamlessSwaps: 0,
   };
 }
 
@@ -28,6 +31,7 @@ export function buildState(input: {
   backend: HostBackend;
   health: HostState["health"];
   supported: boolean;
+  pendingEnable: boolean;
   canvasGrid: Vec2;
   cssSize: Vec2;
   unitScale: Vec2;
@@ -40,6 +44,7 @@ export function buildState(input: {
     backend: input.backend,
     health: input.health,
     supported: input.supported,
+    pendingEnable: input.pendingEnable,
     canvasGrid: input.canvasGrid,
     cssSize: input.cssSize,
     unitScale: input.unitScale,

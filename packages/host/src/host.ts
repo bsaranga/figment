@@ -84,6 +84,10 @@ class HostImpl implements Host {
   private pendingPaintOnce: (() => void)[] = [];
   private mountRoot: ParentNode | null = null;
   private admission: AdmissionReport | null = null;
+  /** M2c: covered until the first complete frame, then swap in. */
+  private pendingEnable = true;
+  private savedPointerEvents = "";
+  private pendingCover: HTMLElement | null = null;
 
   constructor(canvas: HTMLCanvasElement, options: CreateHostOptions) {
     if (options.backend !== "2d") {
@@ -125,10 +129,109 @@ class HostImpl implements Host {
       } else {
         this.registry.markAllDirty();
       }
-      this.requestPaint();
+      // CRITICAL: drawElementImage must run inside the paint event
+      // (WICG contract — outside throws "No cached paint record" or draws empty).
+      this.flushPaint(true);
     };
     canvas.addEventListener("paint", this.paintHandler);
     this.health = "idle";
+    this.armSeamlessEnable();
+  }
+
+  /**
+   * M2c — hide the surface until a complete first frame exists.
+   * Cover with a same-box overlay (not opacity:0 — that suppresses
+   * drawElementImage capture). Swap only when pixels actually landed.
+   */
+  private armSeamlessEnable(): void {
+    this.pendingEnable = true;
+    this.savedPointerEvents = this.canvas.style.pointerEvents;
+    this.canvas.dataset.figmentPending = "1";
+
+    const parent = this.canvas.parentElement;
+    if (parent && getComputedStyle(parent).position === "static") {
+      parent.style.position = "relative";
+    }
+    const cover = document.createElement("div");
+    cover.setAttribute("data-figment-pending-cover", "1");
+    const bg = this.canvas.style.background || "#12161f";
+    cover.style.cssText = [
+      "position:absolute",
+      "inset:0",
+      `background:${bg}`,
+      "pointer-events:none",
+      "z-index:1",
+    ].join(";");
+    this.pendingCover = cover;
+    if (parent) {
+      // Overlay the canvas box; canvas stays visible for the capture pipeline.
+      const rect = this.canvas.getBoundingClientRect();
+      cover.style.left = `${this.canvas.offsetLeft}px`;
+      cover.style.top = `${this.canvas.offsetTop}px`;
+      cover.style.width = `${rect.width || this.canvas.clientWidth}px`;
+      cover.style.height = `${rect.height || this.canvas.clientHeight}px`;
+      cover.style.right = "auto";
+      cover.style.bottom = "auto";
+      parent.append(cover);
+    }
+    // During probe, drop pointer events on the canvas (Underglass contract).
+    this.canvas.style.pointerEvents = "none";
+  }
+
+  private revealIfComplete(drawn: number): void {
+    if (!this.pendingEnable) return;
+    if (drawn <= 0) return;
+    if (!this.frameHasPixels()) {
+      this.requestBrowserPaint();
+      return;
+    }
+    this.pendingEnable = false;
+    this.canvas.style.pointerEvents = this.savedPointerEvents || "auto";
+    delete this.canvas.dataset.figmentPending;
+    this.pendingCover?.remove();
+    this.pendingCover = null;
+    this.metrics.seamlessSwaps += 1;
+  }
+
+  /** True when at least one opaque pixel landed on the surface. */
+  private frameHasPixels(): boolean {
+    const { width, height } = this.canvas;
+    if (width < 1 || height < 1) return false;
+    for (let gy = 1; gy <= 4; gy++) {
+      for (let gx = 1; gx <= 4; gx++) {
+        const x = Math.floor((width * gx) / 5);
+        const y = Math.floor((height * gy) / 5);
+        try {
+          const { data } = this.ctx.getImageData(x, y, 1, 1);
+          if ((data[3] ?? 0) > 0) return true;
+        } catch {
+          return false;
+        }
+      }
+    }
+    return false;
+  }
+
+  private cancelSeamlessEnable(): void {
+    if (!this.pendingEnable) return;
+    this.pendingEnable = false;
+    this.canvas.style.pointerEvents = this.savedPointerEvents || "auto";
+    delete this.canvas.dataset.figmentPending;
+    this.pendingCover?.remove();
+    this.pendingCover = null;
+  }
+
+  /** Ask the browser for a paint event (draw happens in that handler). */
+  private requestBrowserPaint(): void {
+    if (this.destroyed) return;
+    const req = (this.canvas as HTMLCanvasElement & { requestPaint?: () => void })
+      .requestPaint;
+    if (typeof req === "function") {
+      req.call(this.canvas);
+      return;
+    }
+    // Fallback: draw next frame (may lack a paint-record cache).
+    this.requestPaint();
   }
 
   mount(root: ParentNode): () => void {
@@ -199,7 +302,8 @@ class HostImpl implements Host {
       record.nestedMarks = markNestedCanvases(el);
       this.metrics.nestedCanvasMarks += record.nestedMarks.length;
     }
-    // Draw immediately so geometry/hit-test is valid before the next frame.
+    // Draw during the next browser paint event (drawElementImage contract).
+    // One opportunistic flush in case a paint record is already cached.
     this.flushPaint(true);
     this.requestPaint();
     return new LayerHandleImpl(record.id, el, this, record);
@@ -216,6 +320,13 @@ class HostImpl implements Host {
 
   requestPaint(): void {
     if (this.destroyed) return;
+    // Prefer the browser paint event so drawElementImage has a paint record.
+    const req = (this.canvas as HTMLCanvasElement & { requestPaint?: () => void })
+      .requestPaint;
+    if (typeof req === "function") {
+      req.call(this.canvas);
+      return;
+    }
     if (this.raf) return;
     this.raf = requestAnimationFrame(() => {
       this.raf = 0;
@@ -279,6 +390,8 @@ class HostImpl implements Host {
       this.metrics.dirtyRedraws += dirty.length;
       this.health = "healthy";
       this.lastError = undefined;
+      // M2c: only swap when a complete frame (≥1 layer) actually landed.
+      this.revealIfComplete(drawn);
     } catch (e) {
       this.health = "failed";
       this.lastError = e instanceof Error ? e.message : String(e);
@@ -310,6 +423,7 @@ class HostImpl implements Host {
       backend: this.backend,
       health: this.health,
       supported: true,
+      pendingEnable: this.pendingEnable,
       canvasGrid: this.unitState.canvasGrid,
       cssSize: this.unitState.cssSize,
       unitScale: this.unitState.scale,
@@ -339,6 +453,7 @@ class HostImpl implements Host {
       this.canvas.removeEventListener("paint", this.paintHandler);
       this.paintHandler = null;
     }
+    this.cancelSeamlessEnable();
     this.canvas.removeAttribute("content");
     delete this.canvas.dataset.figmentHost;
     this.health = "idle";
