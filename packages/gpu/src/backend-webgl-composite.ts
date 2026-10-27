@@ -13,6 +13,7 @@ import {
   effectColorGlsl,
   effectUvGlsl,
 } from "./effects/sampling.js";
+import { getEffect, clampParam } from "./effects/schema.js";
 import { FigmentUnsupportedError } from "@figment/host";
 
 type TexElementSubImage2D = (
@@ -42,17 +43,40 @@ function fragmentSrc(effects: EffectDesc[]): string {
   const uvOps = chain.map((e) => effectUvGlsl(e)).filter(Boolean).join("\n  ");
   const colorOps = chain.map((e) => effectColorGlsl(e)).filter(Boolean).join("\n  ");
 
+  // M3c: pull compiled custom effect GLSL + bake params.
+  const customFns: string[] = [];
+  const customCalls: string[] = [];
+  for (const e of chain) {
+    if (e.kind !== "custom") continue;
+    const pub = getEffect(e.id);
+    if (!pub) continue;
+    customFns.push(pub.glsl);
+    // Bake params as literals into the call.
+    const args = pub.params.map((p) => {
+      const raw = e.params?.[p.name] ?? p.min;
+      return clampParam(p, raw).toFixed(6);
+    });
+    customCalls.push(
+      `c = figmentCustom_${pub.id}(c${args.length ? ", " : ""}${args.join(", ")});`,
+    );
+  }
+  const colorOpsFull = [
+    ...colorOps.split("\n").filter(Boolean),
+    ...customCalls,
+  ].join("\n  ");
+
   return `
 precision mediump float;
 varying vec2 v_uv;
 uniform sampler2D u_tex;
 uniform float u_alpha;
 ${EFFECT_GLSL_LIB}
+${customFns.join("\n")}
 void main() {
   vec2 uv = v_uv;
   ${uvOps}
   vec4 c = texture2D(u_tex, uv) * u_alpha;
-  ${colorOps}
+  ${colorOpsFull}
   gl_FragColor = c;
 }`;
 }

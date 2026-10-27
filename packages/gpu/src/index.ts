@@ -34,3 +34,18 @@ export {
   createDirectComposite,
   createWebGLComposite as createComposite,
 } from "./backend-webgl-composite.js";
+
+export {
+  defineEffect,
+  compileEffect,
+  compileEffectOnGPU,
+  validateEffectDefinition,
+  getEffect,
+  listEffects,
+  clearEffects,
+  clampParam,
+  extractExpression,
+  type EffectDefinition,
+  type EffectParamSpec,
+  type CompiledEffect,
+} from "./effects/schema.js";

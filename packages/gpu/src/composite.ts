@@ -3,6 +3,7 @@
  * No staging 2D canvas. Shader budget ≤3 chained ops (ARCHITECTURE §4.3).
  */
 import { FigmentUnsupportedError } from "@figment/host";
+import { getEffect, clampParam } from "./effects/schema.js";
 
 /** Maximum chained pixel-moving effects per layer. */
 export const MAX_EFFECT_OPS = 3;
@@ -65,11 +66,23 @@ export function validateEffectChain(effects: EffectDesc[]): EffectDesc[] {
           throw new FigmentUnsupportedError("probe-failed", "dissolve.progress must be 0..1");
         }
         break;
-      case "custom":
+      case "custom": {
         if (!e.id) {
           throw new FigmentUnsupportedError("probe-failed", "custom effect requires id");
         }
+        const pub = getEffect(e.id);
+        if (!pub) {
+          throw new FigmentUnsupportedError(
+            "probe-failed",
+            `custom effect "${e.id}" is not defined — call defineEffect first`,
+          );
+        }
+        for (const [k, v] of Object.entries(e.params ?? {})) {
+          const spec = pub.params.find((p) => p.name === k);
+          if (spec) clampParam(spec, v);
+        }
         break;
+      }
       default: {
         const kind = (e as { kind?: string }).kind;
         throw new FigmentUnsupportedError("probe-failed", `unknown effect kind: ${kind}`);
