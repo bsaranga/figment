@@ -41,3 +41,10 @@ export {
   type PartialTokens,
   type TokenGroup,
 } from "./tokens.js";
+
+export {
+  FigmentSpatialPanel,
+  registerSpatialPanel,
+  type PanelMaterial,
+  type SpatialPanelState,
+} from "./spatial-panel.js";
