@@ -54,3 +54,9 @@ export {
   registerZScroll,
   type ZScrollState,
 } from "./z-scroll.js";
+
+export {
+  FigmentInfiniteCanvas,
+  registerInfiniteCanvas,
+  type CanvasView,
+} from "./infinite-canvas.js";
