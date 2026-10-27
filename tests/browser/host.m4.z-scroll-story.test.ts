@@ -27,9 +27,13 @@ test.describe("M4h2 z-scroll story demo", () => {
     // Mid scroll: progress and camera Z move into the scene.
     await page.evaluate(() => {
       const story = document.getElementById("story")!;
-      window.scrollTo(0, story.offsetTop + story.offsetHeight * 0.45);
+      window.scrollTo(0, story.offsetTop + story.offsetHeight * 0.6);
     });
-    await page.waitForTimeout(50);
+    await page.waitForFunction(
+      () => window.__zStory.progress() > 0.3,
+      undefined,
+      { timeout: 5_000 },
+    );
     const atMid = await page.evaluate(() => ({
       p: window.__zStory.progress(),
       z: window.__zStory.cameraZ(),
