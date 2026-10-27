@@ -2,6 +2,8 @@
 
 **Full stack for canvas-native apps:** surface runtime + GPU framework (effects, materials, lights, tilt) + spatial UI kit. Real DOM from any front-end framework. Interactive and accessible. Chrome HTML-in-Canvas OT only — **no fallback**.
 
+**Promo:** [bsaranga.github.io/figment](https://bsaranga.github.io/figment/)
+
 ## Status
 
 Research / proposal phase. See [PROPOSAL.md](./PROPOSAL.md) before any implementation.
