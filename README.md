@@ -9,6 +9,7 @@ Research / proposal phase. See [PROPOSAL.md](./PROPOSAL.md) before any implement
 ## Docs
 
 - [EXEC_SUMMARY.md](./EXEC_SUMMARY.md) — **start here** (plain-language product + architecture)
+- [ACTIVATION.md](./ACTIVATION.md) — **Chrome flags / Origin Trial + known shortcomings**
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — packages, APIs, modules, data flow, error model
 - [PLAN.md](./PLAN.md) — **milestones, task breakdown, TODO-graph**
 - [PROPOSAL.md](./PROPOSAL.md) — thesis, validated API surface, competitor map, usefulness ranking, risks
