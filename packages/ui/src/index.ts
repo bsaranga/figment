@@ -72,3 +72,10 @@ export {
   type MinimapItem,
   type MinimapView,
 } from "./minimap.js";
+
+export {
+  FigmentCommandPalette,
+  registerCommandPalette,
+  type CommandItem,
+  type PaletteOpenDetail,
+} from "./command-palette.js";
