@@ -79,3 +79,12 @@ export {
   type CommandItem,
   type PaletteOpenDetail,
 } from "./command-palette.js";
+
+export {
+  FigmentModal,
+  registerModal,
+} from "./modal.js";
+export {
+  FigmentToast,
+  registerToast,
+} from "./toast.js";
