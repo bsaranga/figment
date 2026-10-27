@@ -1,4 +1,4 @@
-import type { LayerOpts, LayerTransform, TransformOrigin } from "./types.js";
+import type { LayerOpts, LayerTransform, Tilt, TransformOrigin } from "./types.js";
 import { DEFAULT_TRANSFORM } from "./types.js";
 import type { Affine, Vec2 } from "./geometry.js";
 import { composeAffine } from "./geometry.js";
@@ -10,6 +10,7 @@ export interface LayerRecord {
   transform: LayerTransform;
   origin: TransformOrigin;
   clip?: DOMRect;
+  tilt?: Tilt;
   decorative: boolean;
   drawAt?: { x: number; y: number };
   dirty: boolean;
@@ -84,12 +85,7 @@ export class LayerRegistry {
     };
     if (opts.clip) record.clip = opts.clip;
     if (opts.drawAt) record.drawAt = opts.drawAt;
-    if (opts.tilt && (opts.tilt.x !== 0 || opts.tilt.y !== 0)) {
-      // M2 implements projective tilt; refuse now (no silent flat fallback).
-      throw new EnrollmentError(
-        "tilt requires M2 admission (tilt-unsupported). Use transform.rotation for 2D rotation.",
-      );
-    }
+    if (opts.tilt) record.tilt = opts.tilt;
     this.map.set(id, record);
     return record;
   }

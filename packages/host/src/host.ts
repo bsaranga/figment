@@ -22,6 +22,7 @@ import { LayerRegistry, type LayerRecord } from "./layers.js";
 import { buildState, createMetrics, type Metrics } from "./diagnostics.js";
 import { drawLayers2D } from "./backend/2d.js";
 import { assertAdmission, type AdmissionReport } from "./admission.js";
+import { composeTiltMatrix, tiltToCss, toDOMMatrix } from "./tilt.js";
 import type {
   CreateHostOptions,
   GeometryUpdate,
@@ -393,7 +394,33 @@ class HostImpl implements Host {
     } = {
       preserveHitTestOrder: rec.preserveHitTestOrder,
     };
-    if (rec.canvasTransform) init.canvasTransform = rec.canvasTransform;
+    if (rec.tilt && (rec.tilt.x !== 0 || rec.tilt.y !== 0)) {
+      const el = rec.element as HTMLElement;
+      const w = el.offsetWidth || el.getBoundingClientRect().width;
+      const h = el.offsetHeight || el.getBoundingClientRect().height;
+      const originX =
+        rec.origin === "center"
+          ? 0.5
+          : rec.origin === "top-left"
+            ? 0
+            : rec.origin.x;
+      const originY =
+        rec.origin === "center"
+          ? 0.5
+          : rec.origin === "top-left"
+            ? 0
+            : rec.origin.y;
+      const pm = composeTiltMatrix({
+        tilt: rec.tilt,
+        width: w,
+        height: h,
+        originX,
+        originY,
+      });
+      init.canvasTransform = toDOMMatrix(pm.matrix);
+    } else if (rec.canvasTransform) {
+      init.canvasTransform = rec.canvasTransform;
+    }
     // canvasClip is applied via draw clip + element clip-path (DOM hits).
     // Passing canvasClip here can blank the hit region (WICG #186 family).
     // if (rec.clip) init.canvasClip = rec.clip;
@@ -570,6 +597,27 @@ class HostImpl implements Host {
  * Map a CSS-px clip rect (canvas space) onto the element as clip-path so
  * DOM hit-testing matches what we draw under canvasClip.
  */
+function applyElementTilt(rec: LayerRecord): void {
+  const el = rec.element;
+  if (!(el instanceof HTMLElement)) return;
+  if (!rec.tilt || (rec.tilt.x === 0 && rec.tilt.y === 0)) {
+    // Keep other transforms (if any) but drop tilt-only perspective.
+    if (el.dataset.figmentTilt === "1") {
+      el.style.transform = "";
+      el.style.perspective = "";
+      delete el.dataset.figmentTilt;
+    }
+    return;
+  }
+  const originX =
+    rec.origin === "center" ? 0.5 : rec.origin === "top-left" ? 0 : rec.origin.x;
+  const originY =
+    rec.origin === "center" ? 0.5 : rec.origin === "top-left" ? 0 : rec.origin.y;
+  el.style.transformOrigin = cssOriginKeyword(rec.origin);
+  el.style.transform = tiltToCss(rec.tilt, originX, originY);
+  el.dataset.figmentTilt = "1";
+}
+
 function cssOriginKeyword(origin: TransformOrigin): string {
   if (origin === "top-left") return "top left";
   if (origin === "center") return "center";
@@ -582,6 +630,8 @@ function applyElementClipPath(rec: LayerRecord): void {
 
   // M2e: keep DOM hit-testing on the same pivot as the GPU draw.
   el.style.transformOrigin = cssOriginKeyword(rec.origin);
+  // M2f: projective tilt as CSS perspective+rotate (hits follow the quad).
+  applyElementTilt(rec);
 
   if (!rec.clip) {
     el.style.clipPath = "";

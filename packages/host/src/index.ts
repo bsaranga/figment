@@ -68,3 +68,16 @@ export {
 export { createHost } from "./host.js";
 
 export const VERSION = "0.1.0";
+
+export {
+  composeTiltMatrix,
+  tiltToCss,
+  cornersInFront,
+  tiltFacingViewer,
+  clampTiltDeg,
+  toDOMMatrix,
+  DEFAULT_PERSPECTIVE,
+  MAX_TILT_DEG,
+  type ProjectiveMatrix,
+  type Matrix4,
+} from "./tilt.js";
