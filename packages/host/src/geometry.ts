@@ -112,12 +112,16 @@ export function invertAffine(m: Affine): Affine | null {
  * `scaleX = canvas.width / cssContentWidth` (see ACTIVATION.md unit footguns).
  */
 export function computeUnitScale(
-  canvasGrid: { width: number; height: number },
-  cssSize: { width: number; height: number },
+  canvasGrid: { width: number; height: number } | Vec2,
+  cssSize: { width: number; height: number } | Vec2,
 ): Vec2 {
+  const gridW = "width" in canvasGrid ? canvasGrid.width : canvasGrid.x;
+  const gridH = "height" in canvasGrid ? canvasGrid.height : canvasGrid.y;
+  const cssW = "width" in cssSize ? cssSize.width : cssSize.x;
+  const cssH = "height" in cssSize ? cssSize.height : cssSize.y;
   return {
-    x: cssSize.width === 0 ? 1 : canvasGrid.width / cssSize.width,
-    y: cssSize.height === 0 ? 1 : canvasGrid.height / cssSize.height,
+    x: cssW === 0 ? 1 : gridW / cssW,
+    y: cssH === 0 ? 1 : gridH / cssH,
   };
 }
 

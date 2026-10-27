@@ -60,6 +60,12 @@ export default defineConfig({
     launchOptions,
     trace: "on-first-retry",
   },
+  webServer: {
+    command: "pnpm --filter @figment/demo-vanilla-mount dev",
+    port: 5173,
+    reuseExistingServer: !process.env.CI,
+    timeout: 60_000,
+  },
   projects: [
     {
       name: "html-in-canvas",

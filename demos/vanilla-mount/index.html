@@ -50,6 +50,17 @@
       #status.err {
         color: #f07178;
       }
+      pre#log {
+        margin: 0;
+        padding: 0.75rem 1rem;
+        border: 1px solid #2a3140;
+        border-radius: 8px;
+        background: #0e131c;
+        color: #8b9bb4;
+        font-size: 0.75rem;
+        max-height: 180px;
+        overflow: auto;
+      }
     </style>
   </head>
   <body>
@@ -61,6 +72,7 @@
       </p>
       <canvas id="stage" width="720" height="320" content="drawable"></canvas>
       <div id="status">booting…</div>
+      <pre id="log"></pre>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

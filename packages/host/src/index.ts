@@ -1,55 +1,21 @@
 /**
- * figment surface runtime — public entry (stub).
+ * figment surface runtime — public entry.
  * See ARCHITECTURE.md §3 and PLAN.md M1.
  */
 
-/** Typed failure modes. figment never degrades silently. */
-export type FigmentUnsupportedReason =
-  | "missing-api"
-  | "probe-failed"
-  | "tilt-unsupported";
+export {
+  FigmentUnsupportedError,
+  EnrollmentError,
+  PaintTimeoutError,
+  type FigmentUnsupportedReason,
+} from "./errors.js";
 
-export class FigmentUnsupportedError extends Error {
-  readonly reason: FigmentUnsupportedReason;
-  override readonly name = "FigmentUnsupportedError";
-
-  constructor(reason: FigmentUnsupportedReason, detail: string) {
-    super(`figment: ${reason}: ${detail}`);
-    this.reason = reason;
-  }
-}
-
-export type HostBackend = "2d" | "webgl" | "webgpu";
-
-export interface CreateHostOptions {
-  backend: HostBackend;
-  devicePixelRatio?: number;
-  budgets?: {
-    layers?: number;
-    pixels?: number;
-  };
-}
-
-/**
- * Create a surface host on a canvas.
- * Throws {@link FigmentUnsupportedError} when HTML-in-Canvas is missing — no fallback.
- */
-export function createHost(
-  target: HTMLCanvasElement | OffscreenCanvas,
-  options: CreateHostOptions,
-): never {
-  void target;
-  void options;
-  throw new FigmentUnsupportedError(
-    "missing-api",
-    "createHost is not implemented yet (M1). Install Chrome Canary with HTML-in-Canvas flags.",
-  );
-}
+export { inspectSupport, assertSupport, type SupportReport } from "./support.js";
 
 export {
   type Affine,
   type Vec2,
-  type LayerTransform,
+  type LayerTransform as GeometryLayerTransform,
   IDENTITY_AFFINE,
   IDENTITY_TRANSFORM,
   composeAffine,
@@ -63,4 +29,21 @@ export {
   canvasToCss,
 } from "./geometry.js";
 
-export const VERSION = "0.0.0";
+export {
+  type Host,
+  type HostBackend,
+  type HostState,
+  type CreateHostOptions,
+  type LayerHandle,
+  type LayerOpts,
+  type LayerTransform,
+  type TransformOrigin,
+  type Tilt,
+  DEFAULT_TRANSFORM,
+} from "./types.js";
+
+export { SIDE_EFFECT_ATTRIBUTES } from "./mutations.js";
+
+export { createHost } from "./host.js";
+
+export const VERSION = "0.1.0";
