@@ -48,3 +48,9 @@ export {
   type PanelMaterial,
   type SpatialPanelState,
 } from "./spatial-panel.js";
+
+export {
+  FigmentZScroll,
+  registerZScroll,
+  type ZScrollState,
+} from "./z-scroll.js";
