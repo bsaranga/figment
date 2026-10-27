@@ -8,6 +8,7 @@ import type { Camera } from "../camera.js";
 import type { LayerRecord } from "../layers.js";
 import { buildLayerPackets, type LayerPacket } from "./scene.js";
 import { FigmentUnsupportedError } from "../errors.js";
+import { WGSL_EDGE_AA } from "./aa.js";
 import {
   GPUBufferUsage,
   GPUTextureUsage,
@@ -50,10 +51,12 @@ fn vs(@location(0) pos: vec2f, @location(1) uv: vec2f) -> VSOut {
   return out;
 }
 
+${WGSL_EDGE_AA}
+
 @fragment
 fn fs(in: VSOut) -> @location(0) vec4f {
-  let c = textureSample(tex, samp, in.uv);
-  return vec4f(c.rgb * u.alpha, c.a * u.alpha);
+  let dims = vec2f(textureDimensions(tex));
+  return figmentSamplePremul(tex, samp, in.uv, vec2f(1.0) / dims, u.alpha);
 }
 `;
 
@@ -236,7 +239,7 @@ export async function createWebGPUBackend(
         const rec = ensureTexture(p);
         (device.queue as GPUQueue & { drawElementImageToTexture: DrawElementImageToTexture })
           .drawElementImageToTexture(
-            { source: p.element },
+            { source: p.element, premultiplyAlpha: "premultiply" } as never,
             { texture: rec.texture },
           );
       }

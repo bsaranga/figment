@@ -21,6 +21,10 @@ export interface Draw2DOptions {
 export function drawLayers2D(opts: Draw2DOptions): number {
   const { ctx, layers, cssSize, unitScale, onlyDirty, camera } = opts;
   let drawn = 0;
+  // M2i: high-quality bilinear sampling + source-over (premultiplied canvas).
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.globalCompositeOperation = "source-over";
   const origin = camera.origin ?? {
     x: cssSize.x / 2,
     y: cssSize.y / 2,

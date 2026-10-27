@@ -237,7 +237,9 @@ class HostImpl implements Host {
   private revealIfComplete(drawn: number): void {
     if (!this.pendingEnable) return;
     if (drawn <= 0) return;
-    if (!this.frameHasPixels()) {
+    // 2D: require real pixels (drawElementImage can land empty if capture is
+    // not ready). GPU backends have no 2D readback — drawn > 0 is complete.
+    if (this.backend === "2d" && !this.frameHasPixels()) {
       this.requestBrowserPaint();
       return;
     }
@@ -486,7 +488,40 @@ class HostImpl implements Host {
     } = {
       preserveHitTestOrder: rec.preserveHitTestOrder,
     };
-    if (rec.tilt && (rec.tilt.x !== 0 || rec.tilt.y !== 0)) {
+    // WebGL/WebGPU: geometry is fully manual — always push a canonical matrix
+    // so hits land on the drawn quad (2D can auto-sync).
+    const needsManualMatrix =
+      this.backend === "webgl" || this.backend === "webgpu";
+    if (needsManualMatrix) {
+      const el = rec.element as HTMLElement;
+      const rect = el.getBoundingClientRect();
+      const w = rect.width || el.offsetWidth;
+      const h = rect.height || el.offsetHeight;
+      const dx = rec.drawAt ? rec.drawAt.x : rec.transform.x;
+      const dy = rec.drawAt ? rec.drawAt.y : rec.transform.y;
+      const vz = rec.transform.z - this.camera.z;
+      const zs =
+        this.camera.perspective / Math.max(1e-3, this.camera.perspective - vz);
+      const origin = this.camera.origin ?? {
+        x: this.unitState.cssSize.x / 2,
+        y: this.unitState.cssSize.y / 2,
+      };
+      const cos = Math.cos((rec.transform.rotation * Math.PI) / 180);
+      const sin = Math.sin((rec.transform.rotation * Math.PI) / 180);
+      const pivotX = dx + w / 2;
+      const pivotY = dy + h / 2;
+      // T(origin) S(zs) T(-origin) T(pivot) R S T(-pivot) T(dx,dy) — CSS matrix
+      const m = new DOMMatrix();
+      m.translateSelf(origin.x, origin.y);
+      m.scaleSelf(zs, zs);
+      m.translateSelf(-origin.x, -origin.y);
+      m.translateSelf(pivotX, pivotY);
+      m.rotateSelf(rec.transform.rotation);
+      m.scaleSelf(rec.transform.scaleX, rec.transform.scaleY);
+      m.translateSelf(-pivotX, -pivotY);
+      m.translateSelf(dx, dy);
+      init.canvasTransform = m;
+    } else if (rec.tilt && (rec.tilt.x !== 0 || rec.tilt.y !== 0)) {
       const el = rec.element as HTMLElement;
       const w = el.offsetWidth || el.getBoundingClientRect().width;
       const h = el.offsetHeight || el.getBoundingClientRect().height;

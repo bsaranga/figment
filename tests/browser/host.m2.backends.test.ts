@@ -105,12 +105,8 @@ test.describe("M2h WebGL + WebGPU backends", () => {
     page,
   }) => {
     const result = await bootScene(page, "webgl");
-    if (result.threw) {
-      // Environment without WebGL element-texture API must fail-fast.
-      expect(result.name).toBe("FigmentUnsupportedError");
-      expect(result.reason).toBe("missing-api");
-      return;
-    }
+    // WebGL must actually draw in this harness (Chrome + HTML-in-Canvas).
+    expect(result.threw).toBe(false);
     expect(result.backend).toBe("webgl");
     expect(result.health).toBe("healthy");
     expect(result.paints).toBeGreaterThan(0);

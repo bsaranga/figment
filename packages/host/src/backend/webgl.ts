@@ -9,6 +9,7 @@ import type { Camera } from "../camera.js";
 import type { LayerRecord } from "../layers.js";
 import { buildLayerPackets, type LayerPacket } from "./scene.js";
 import { FigmentUnsupportedError } from "../errors.js";
+import { GLSL_EDGE_AA } from "./aa.js";
 
 type TexElementSubImage2D = (
   target: number,
@@ -51,9 +52,10 @@ precision mediump float;
 varying vec2 v_uv;
 uniform sampler2D u_tex;
 uniform float u_alpha;
+uniform vec2 u_texel;
+${GLSL_EDGE_AA}
 void main() {
-  vec4 c = texture2D(u_tex, v_uv);
-  gl_FragColor = vec4(c.rgb * u_alpha, c.a * u_alpha);
+  gl_FragColor = figmentSamplePremul(u_tex, v_uv, u_texel, u_alpha);
 }`;
 
 function compile(gl: WebGLRenderingContext, type: number, src: string): WebGLShader {
@@ -150,6 +152,7 @@ export function createWebGLBackend(canvas: HTMLCanvasElement): WebGLBackend {
   const uRes = gl.getUniformLocation(program, "u_resolution");
   const uTex = gl.getUniformLocation(program, "u_tex");
   const uAlpha = gl.getUniformLocation(program, "u_alpha");
+  const uTexel = gl.getUniformLocation(program, "u_texel");
 
   const textures = new Map<string, LayerTex>();
 
@@ -195,6 +198,7 @@ export function createWebGLBackend(canvas: HTMLCanvasElement): WebGLBackend {
       canvas.width = Math.max(1, Math.round(resX));
       canvas.height = Math.max(1, Math.round(resY));
       gl.viewport(0, 0, canvas.width, canvas.height);
+      // M2i: transparent clear (premultiplied zero).
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.enable(gl.BLEND);
@@ -218,8 +222,13 @@ export function createWebGLBackend(canvas: HTMLCanvasElement): WebGLBackend {
         const texRec = ensureTexture(p);
         gl.bindTexture(gl.TEXTURE_2D, texRec.texture);
         // Upload live element (must stay a bound method call).
+        // Premultiplied upload — bilinear filter then yields clean edges
+        // (no dark fringe from filtering non-premultiplied color × alpha).
         (gl as WebGLRenderingContext & { texElementSubImage2D: TexElementSubImage2D })
-          .texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, p.element);
+          .texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, p.element, {
+            premultiplyAlpha: "premultiply",
+            colorSpaceConversion: "none",
+          });
 
         const x0 = p.x;
         const y0 = p.y;
@@ -236,6 +245,7 @@ export function createWebGLBackend(canvas: HTMLCanvasElement): WebGLBackend {
         gl.bufferSubData(gl.ARRAY_BUFFER, 0, verts);
         gl.uniformMatrix3fv(uMatrix, false, matrix3ForPacket(p, canvas.width, canvas.height));
         gl.uniform1f(uAlpha, p.opacity);
+        gl.uniform2f(uTexel, 1 / texRec.width, 1 / texRec.height);
         gl.activeTexture(gl.TEXTURE0);
         gl.uniform1i(uTex, 0);
         gl.drawArrays(gl.TRIANGLES, 0, 6);

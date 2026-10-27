@@ -30,7 +30,12 @@ export function inspectSupport(canvas: HTMLCanvasElement): SupportReport {
     missing.push("HTMLCanvasElement.content (reflects 'drawable')");
   }
 
-  const ctx2d = canvas.getContext("2d");
+  // Probe 2D APIs on a disposable canvas — calling getContext("2d") on the
+  // host canvas would lock its context type and block WebGL/WebGPU backends.
+  const probe = document.createElement("canvas");
+  probe.width = 2;
+  probe.height = 2;
+  const ctx2d = probe.getContext("2d");
   if (!ctx2d) {
     missing.push("CanvasRenderingContext2D");
   } else {
