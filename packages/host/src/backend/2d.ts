@@ -45,6 +45,14 @@ export function drawLayers2D(opts: Draw2DOptions): number {
     if (layer.transform.opacity !== 1) {
       ctx.globalAlpha = Math.min(1, Math.max(0, layer.transform.opacity));
     }
+    // M2d: canvasClip — draw only inside the clip viewport.
+    if (layer.clip) {
+      const sx = unitScale.x;
+      const sy = unitScale.y;
+      ctx.beginPath();
+      ctx.rect(layer.clip.x * sx, layer.clip.y * sy, layer.clip.width * sx, layer.clip.height * sy);
+      ctx.clip();
+    }
 
     // rotation about origin
     if (layer.transform.rotation !== 0 || layer.transform.scaleX !== 1 || layer.transform.scaleY !== 1) {

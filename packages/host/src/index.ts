@@ -39,6 +39,7 @@ export {
   type LayerTransform,
   type TransformOrigin,
   type Tilt,
+  type GeometryUpdate,
   DEFAULT_TRANSFORM,
 } from "./types.js";
 

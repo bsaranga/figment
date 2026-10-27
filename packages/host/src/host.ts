@@ -24,6 +24,7 @@ import { drawLayers2D } from "./backend/2d.js";
 import { assertAdmission, type AdmissionReport } from "./admission.js";
 import type {
   CreateHostOptions,
+  GeometryUpdate,
   Host,
   HostState,
   LayerHandle,
@@ -50,6 +51,27 @@ class LayerHandleImpl implements LayerHandle {
   setOrigin(o: TransformOrigin): void {
     this.record.origin = o;
     this.record.dirty = true;
+    this.host.syncLayerGeometry(this.record);
+    this.host.requestPaint();
+  }
+
+  setClip(clip: DOMRect | null): void {
+    if (clip) this.record.clip = clip;
+    else delete this.record.clip;
+    this.record.dirty = true;
+    this.host.syncLayerGeometry(this.record);
+    this.host.requestPaint();
+  }
+
+  updateGeometry(g: GeometryUpdate): void {
+    if (g.canvasTransform) this.record.canvasTransform = g.canvasTransform;
+    if (g.canvasClip === null) delete this.record.clip;
+    else if (g.canvasClip) this.record.clip = g.canvasClip;
+    if (typeof g.preserveHitTestOrder === "boolean") {
+      this.record.preserveHitTestOrder = g.preserveHitTestOrder;
+    }
+    this.record.dirty = true;
+    this.host.syncLayerGeometry(this.record);
     this.host.requestPaint();
   }
 
@@ -302,6 +324,8 @@ class HostImpl implements Host {
       record.nestedMarks = markNestedCanvases(el);
       this.metrics.nestedCanvasMarks += record.nestedMarks.length;
     }
+    // Pin hit order + clip to the browser stack before the first draw.
+    this.syncLayerGeometry(record);
     // Draw during the next browser paint event (drawElementImage contract).
     // One opportunistic flush in case a paint record is already cached.
     this.flushPaint(true);
@@ -312,10 +336,88 @@ class HostImpl implements Host {
   removeLayer(id: string): void {
     const rec = this.registry.remove(id);
     if (!rec) return;
+    this.clearLayerGeometry(rec);
     unmarkDrawable(rec.element);
     restoreNestedMarks(rec.nestedMarks);
     this.registry.markAllDirty();
     this.requestPaint();
+  }
+
+  updateGeometry(id: string, g: GeometryUpdate): void {
+    const rec = this.registry.get(id);
+    if (!rec) throw new EnrollmentError(`unknown layer "${id}"`);
+    if (g.canvasTransform) rec.canvasTransform = g.canvasTransform;
+    if (g.canvasClip === null) delete rec.clip;
+    else if (g.canvasClip) rec.clip = g.canvasClip;
+    if (typeof g.preserveHitTestOrder === "boolean") {
+      rec.preserveHitTestOrder = g.preserveHitTestOrder;
+    }
+    rec.dirty = true;
+    this.syncLayerGeometry(rec);
+    this.requestPaint();
+  }
+
+  clearGeometry(id: string): void {
+    const rec = this.registry.get(id);
+    if (!rec) return;
+    this.clearLayerGeometry(rec);
+    this.metrics.geometryClears += 1;
+  }
+
+  /**
+   * M2d — push canonical geometry to the browser hit stack.
+   * `preserveHitTestOrder: true` by default so background redraws do not
+   * steal clicks (ACTIVATION.md “last drawn wins” footgun).
+   */
+  syncLayerGeometry(rec: LayerRecord): void {
+    // Keep DOM hit-testing aligned with canvasClip (WICG #186: browser
+    // hit for rotated clip is AABB; we also clip-path the element).
+    applyElementClipPath(rec);
+
+    const canvas = this.canvas as HTMLCanvasElement & {
+      updateElementGeometry?: (
+        el: Element,
+        init?: {
+          canvasTransform?: DOMMatrix;
+          canvasClip?: DOMRect;
+          preserveHitTestOrder?: boolean;
+        },
+      ) => void;
+    };
+    if (typeof canvas.updateElementGeometry !== "function") return;
+
+    const init: {
+      canvasTransform?: DOMMatrix;
+      canvasClip?: DOMRect;
+      preserveHitTestOrder?: boolean;
+    } = {
+      preserveHitTestOrder: rec.preserveHitTestOrder,
+    };
+    if (rec.canvasTransform) init.canvasTransform = rec.canvasTransform;
+    // canvasClip is applied via draw clip + element clip-path (DOM hits).
+    // Passing canvasClip here can blank the hit region (WICG #186 family).
+    // if (rec.clip) init.canvasClip = rec.clip;
+
+    try {
+      canvas.updateElementGeometry(rec.element, init);
+      this.metrics.geometryUpdates += 1;
+    } catch (e) {
+      this.health = "failed";
+      this.lastError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  private clearLayerGeometry(rec: LayerRecord): void {
+    const canvas = this.canvas as HTMLCanvasElement & {
+      clearElementGeometry?: (el: Element) => void;
+    };
+    if (typeof canvas.clearElementGeometry !== "function") return;
+    try {
+      canvas.clearElementGeometry(rec.element);
+      this.metrics.geometryClears += 1;
+    } catch (e) {
+      this.lastError = e instanceof Error ? e.message : String(e);
+    }
   }
 
   requestPaint(): void {
@@ -390,6 +492,8 @@ class HostImpl implements Host {
       this.metrics.dirtyRedraws += dirty.length;
       this.health = "healthy";
       this.lastError = undefined;
+      // M2d: keep hit order stable after redraws (preserveHitTestOrder).
+      for (const layer of layers) this.syncLayerGeometry(layer);
       // M2c: only swap when a complete frame (≥1 layer) actually landed.
       this.revealIfComplete(drawn);
     } catch (e) {
@@ -460,6 +564,41 @@ class HostImpl implements Host {
     const waiters = this.pendingPaintOnce.splice(0);
     for (const fn of waiters) fn();
   }
+}
+
+/**
+ * Map a CSS-px clip rect (canvas space) onto the element as clip-path so
+ * DOM hit-testing matches what we draw under canvasClip.
+ */
+function applyElementClipPath(rec: LayerRecord): void {
+  const el = rec.element;
+  if (!(el instanceof HTMLElement)) return;
+
+  if (!rec.clip) {
+    el.style.clipPath = "";
+    return;
+  }
+
+  // Layer draws at drawAt (canvas-grid → CSS via unit). Default origin 0,0.
+  // Clip rect is in the same CSS space as the canvas content box.
+  const drawCssX = rec.drawAt ? rec.drawAt.x : rec.transform.x;
+  const drawCssY = rec.drawAt ? rec.drawAt.y : rec.transform.y;
+  const box = el.getBoundingClientRect();
+  const width = box.width || el.offsetWidth;
+  const height = box.height || el.offsetHeight;
+  if (width <= 0 || height <= 0) return;
+
+  const localLeft = rec.clip.x - drawCssX;
+  const localTop = rec.clip.y - drawCssY;
+  const localRight = localLeft + rec.clip.width;
+  const localBottom = localTop + rec.clip.height;
+
+  const insetTop = Math.max(0, localTop);
+  const insetLeft = Math.max(0, localLeft);
+  const insetRight = Math.max(0, width - localRight);
+  const insetBottom = Math.max(0, height - localBottom);
+
+  el.style.clipPath = `inset(${insetTop}px ${insetRight}px ${insetBottom}px ${insetLeft}px)`;
 }
 
 export function createHost(

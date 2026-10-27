@@ -12,6 +12,9 @@ export interface Metrics {
   skippedFrames: number;
   /** M2c: seamless swaps performed (0 until first complete frame reveals). */
   seamlessSwaps: number;
+  /** M2d: updateElementGeometry / clearElementGeometry calls. */
+  geometryUpdates: number;
+  geometryClears: number;
 }
 
 export function createMetrics(): Metrics {
@@ -24,6 +27,8 @@ export function createMetrics(): Metrics {
     nestedCanvasMarks: 0,
     skippedFrames: 0,
     seamlessSwaps: 0,
+    geometryUpdates: 0,
+    geometryClears: 0,
   };
 }
 

@@ -13,6 +13,10 @@ export interface LayerRecord {
   decorative: boolean;
   drawAt?: { x: number; y: number };
   dirty: boolean;
+  /** M2d: keep hit-test order stable across redraws. */
+  preserveHitTestOrder: boolean;
+  /** M2d: last canvasTransform pushed to updateElementGeometry. */
+  canvasTransform?: DOMMatrix;
   /** Nest canvas marks owned while this layer is active. */
   nestedMarks: { canvas: HTMLCanvasElement; previous: string | null }[];
 }
@@ -75,6 +79,7 @@ export class LayerRegistry {
       origin: opts.origin ?? "top-left",
       decorative: opts.decorative ?? false,
       dirty: true,
+      preserveHitTestOrder: opts.preserveHitTestOrder ?? true,
       nestedMarks: [],
     };
     if (opts.clip) record.clip = opts.clip;
@@ -117,7 +122,13 @@ export class LayerRegistry {
   }
 
   all(): LayerRecord[] {
+    // Enrollment order = hit-test stack order (bottom → top).
     return [...this.map.values()];
+  }
+
+  /** Layers topmost-first for hit resolution. */
+  hitStack(): LayerRecord[] {
+    return this.all().reverse();
   }
 
   dirtyAll(): LayerRecord[] {
