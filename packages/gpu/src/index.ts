@@ -62,3 +62,14 @@ export {
   type ResolvedRelief,
   type MaterialState,
 } from "./materials/relief.js";
+
+export {
+  resolveStage,
+  setStage,
+  getStage,
+  clearStageMaterials,
+  stageCallGlsl,
+  STAGE_GLSL,
+  type StageDesc,
+  type ResolvedStage,
+} from "./materials/stage.js";

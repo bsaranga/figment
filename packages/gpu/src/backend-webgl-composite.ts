@@ -20,6 +20,11 @@ import {
   resolveRelief,
   reliefCallGlsl,
 } from "./materials/relief.js";
+import {
+  STAGE_GLSL,
+  resolveStage,
+  stageCallGlsl,
+} from "./materials/stage.js";
 import { FigmentUnsupportedError } from "@figment/host";
 
 type TexElementSubImage2D = (
@@ -74,10 +79,12 @@ function fragmentSrc(
     ...customCalls,
   ].join("\n  ");
 
-  const materialOp =
-    material && material.kind === "relief"
-      ? reliefCallGlsl(resolveRelief(material))
-      : "";
+  let materialOp = "";
+  if (material && material.kind === "relief") {
+    materialOp = reliefCallGlsl(resolveRelief(material));
+  } else if (material && material.kind === "stage") {
+    materialOp = stageCallGlsl(resolveStage(material));
+  }
 
   return `
 precision mediump float;
@@ -86,6 +93,7 @@ uniform sampler2D u_tex;
 uniform float u_alpha;
 ${EFFECT_GLSL_LIB}
 ${RELIEF_GLSL}
+${STAGE_GLSL}
 ${customFns.join("\n")}
 void main() {
   vec2 uv = v_uv;
