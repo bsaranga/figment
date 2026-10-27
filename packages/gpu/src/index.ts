@@ -138,3 +138,16 @@ export {
   type PresenceOptions,
   type PresenceHandle,
 } from "./motion/presence.js";
+
+export {
+  scrollTrack,
+  scrollProgress,
+  sampleTrack,
+  applyScrollSample,
+  prefersReducedMotion,
+  type ScrollTrack,
+  type ScrollTrackHandle,
+  type ScrollSample,
+  type ScrollChannel,
+  type ScrollChannelSpec,
+} from "./motion/scroll-track.js";
