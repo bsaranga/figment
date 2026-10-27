@@ -22,7 +22,7 @@ import { LayerRegistry, type LayerRecord } from "./layers.js";
 import { buildState, createMetrics, type Metrics } from "./diagnostics.js";
 import { drawLayers2D } from "./backend/2d.js";
 import { assertAdmission, type AdmissionReport } from "./admission.js";
-import { composeTiltMatrix, tiltToCss, toDOMMatrix } from "./tilt.js";
+import { composeTiltMatrix, tiltToCss, toDOMMatrix, witnessTilt } from "./tilt.js";
 import type {
   CreateHostOptions,
   GeometryUpdate,
@@ -319,17 +319,64 @@ class HostImpl implements Host {
 
   layer(el: Element, opts: LayerOpts = {}): LayerHandle {
     if (this.destroyed) throw new EnrollmentError("host destroyed");
+
     const record = this.registry.add(el, opts);
     markDrawable(el);
     if (this.mountRoot) {
       record.nestedMarks = markNestedCanvases(el);
       this.metrics.nestedCanvasMarks += record.nestedMarks.length;
     }
-    // Pin hit order + clip to the browser stack before the first draw.
+    // Pin hit order + clip + tilt CSS to the browser stack before the witness.
     this.syncLayerGeometry(record);
-    // Draw during the next browser paint event (drawElementImage contract).
-    // One opportunistic flush in case a paint record is already cached.
+    // One paint so the browser has a paint record + live geometry for hits.
     this.flushPaint(true);
+
+    // M2g: refuse tilt when the browser cannot hit the transformed quad.
+    // Witness runs AFTER geometry sync + paint — drawable children need both
+    // before elementFromPoint can resolve them.
+    if (record.tilt && (record.tilt.x !== 0 || record.tilt.y !== 0)) {
+      if (!(el instanceof HTMLElement)) {
+        this.removeLayer(record.id);
+        throw new FigmentUnsupportedError(
+          "tilt-unsupported",
+          "tilt requires an HTMLElement target for the admission witness",
+        );
+      }
+      const originX =
+        record.origin === "center"
+          ? 0.5
+          : record.origin === "top-left"
+            ? 0
+            : typeof record.origin === "object"
+              ? record.origin.x
+              : 0.5;
+      const originY =
+        record.origin === "center"
+          ? 0.5
+          : record.origin === "top-left"
+            ? 0
+            : typeof record.origin === "object"
+              ? record.origin.y
+              : 0.5;
+      const witness = witnessTilt({
+        element: el,
+        tilt: record.tilt,
+        originX,
+        originY,
+        syncHits: () => this.syncLayerGeometry(record),
+      });
+      this.metrics.tiltWitnesses += 1;
+      if (!witness.ok) {
+        this.metrics.tiltWitnessFailures += 1;
+        this.removeLayer(record.id);
+        throw new FigmentUnsupportedError(
+          "tilt-unsupported",
+          `${witness.detail}. Browser cannot hit-test this tilt (see ACTIVATION.md / WICG).`,
+        );
+      }
+    }
+
+    // Draw during the next browser paint event (drawElementImage contract).
     this.requestPaint();
     return new LayerHandleImpl(record.id, el, this, record);
   }

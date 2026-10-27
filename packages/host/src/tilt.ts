@@ -213,3 +213,114 @@ export function tiltFacingViewer(
 ): boolean {
   return cornersInFront(pm, width, height).every((c) => c.front);
 }
+
+// ---------------------------------------------------------------------------
+// M2g — tilt admission witness
+// ---------------------------------------------------------------------------
+
+export interface TiltWitnessSample {
+  label: string;
+  client: { x: number; y: number };
+  matched: boolean;
+  actualId: string | null;
+}
+
+export interface TiltWitnessResult {
+  ok: boolean;
+  samples: TiltWitnessSample[];
+  detail: string;
+}
+
+/**
+ * Functional witness: apply the tilt, sample transformed local points with
+ * elementFromPoint, refuse when hits do not match the visual quad.
+ * Synchronous — forces layout before sampling.
+ */
+export function witnessTilt(opts: {
+  element: HTMLElement;
+  tilt: Tilt;
+  originX?: number;
+  originY?: number;
+  /**
+   * Re-push canvas geometry after the CSS tilt is applied.
+   * Required for elements inside `content="drawable"` canvases — without
+   * updateElementGeometry, elementFromPoint returns the canvas, not the child.
+   */
+  syncHits?: () => void;
+  /** Restored on the element after the probe. */
+  previousTransform?: string;
+  previousTransformOrigin?: string;
+}): TiltWitnessResult {
+  const el = opts.element;
+  const prevTransform = opts.previousTransform ?? el.style.transform;
+  const prevOrigin = opts.previousTransformOrigin ?? el.style.transformOrigin;
+
+  const width = el.offsetWidth || el.getBoundingClientRect().width;
+  const height = el.offsetHeight || el.getBoundingClientRect().height;
+  if (width < 2 || height < 2) {
+    return {
+      ok: false,
+      samples: [],
+      detail: `tilt witness: element has empty box (${width}×${height})`,
+    };
+  }
+
+  const originX = opts.originX ?? 0.5;
+  const originY = opts.originY ?? 0.5;
+  el.style.transformOrigin = `${(originX * 100).toFixed(4)}% ${(originY * 100).toFixed(4)}%`;
+  el.style.transform = tiltToCss(opts.tilt, originX, originY);
+  // Force layout so getBoundingClientRect / elementFromPoint see the quad.
+  void el.offsetWidth;
+  opts.syncHits?.();
+  void el.offsetWidth;
+
+  // Inset well inside the border box — extreme corners sit on the projective
+  // silhouette and can miss by a few px under moderate tilt.
+  const ix = Math.max(16, width * 0.18);
+  const iy = Math.max(14, height * 0.18);
+  const localPoints: { label: string; lx: number; ly: number }[] = [
+    { label: "center", lx: width / 2, ly: height / 2 },
+    { label: "tl", lx: ix, ly: iy },
+    { label: "tr", lx: width - ix, ly: iy },
+    { label: "bl", lx: ix, ly: height - iy },
+    { label: "br", lx: width - ix, ly: height - iy },
+  ];
+
+  const samples: TiltWitnessSample[] = [];
+  for (const p of localPoints) {
+    const marker = document.createElement("i");
+    marker.setAttribute("data-figment-tilt-marker", "1");
+    marker.style.cssText = `position:absolute;left:${p.lx}px;top:${p.ly}px;width:0;height:0;margin:0;padding:0;border:0;pointer-events:none;`;
+    el.append(marker);
+    let client = { x: 0, y: 0 };
+    try {
+      const r = marker.getBoundingClientRect();
+      client = { x: r.left, y: r.top };
+    } finally {
+      marker.remove();
+    }
+    const hit = document.elementFromPoint(client.x, client.y);
+    const matched = !!hit && (hit === el || el.contains(hit));
+    samples.push({
+      label: p.label,
+      client,
+      matched,
+      actualId: matched
+        ? el.id || "target"
+        : (hit?.id || hit?.tagName.toLowerCase() || null),
+    });
+  }
+
+  el.style.transform = prevTransform;
+  el.style.transformOrigin = prevOrigin;
+
+  const failed = samples.filter((s) => !s.matched);
+  const ok = samples.length > 0 && failed.length === 0;
+  return {
+    ok,
+    samples,
+    detail: ok
+      ? `tilt witness ok: ${samples.length} points matched under ${tiltToCss(opts.tilt, originX, originY)}`
+      : `tilt witness failed at ${failed.map((s) => s.label).join(", ")} under ${tiltToCss(opts.tilt, originX, originY)}`,
+  };
+}

@@ -76,8 +76,11 @@ export {
   tiltFacingViewer,
   clampTiltDeg,
   toDOMMatrix,
+  witnessTilt,
   DEFAULT_PERSPECTIVE,
   MAX_TILT_DEG,
   type ProjectiveMatrix,
   type Matrix4,
+  type TiltWitnessResult,
+  type TiltWitnessSample,
 } from "./tilt.js";

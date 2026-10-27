@@ -15,6 +15,9 @@ export interface Metrics {
   /** M2d: updateElementGeometry / clearElementGeometry calls. */
   geometryUpdates: number;
   geometryClears: number;
+  /** M2g: tilt admission witnesses. */
+  tiltWitnesses: number;
+  tiltWitnessFailures: number;
 }
 
 export function createMetrics(): Metrics {
@@ -29,6 +32,8 @@ export function createMetrics(): Metrics {
     seamlessSwaps: 0,
     geometryUpdates: 0,
     geometryClears: 0,
+    tiltWitnesses: 0,
+    tiltWitnessFailures: 0,
   };
 }
 

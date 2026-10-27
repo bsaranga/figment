@@ -100,6 +100,9 @@ export interface HostState {
     /** M2d: updateElementGeometry / clearElementGeometry calls. */
     geometryUpdates: number;
     geometryClears: number;
+    /** M2g: tilt admission witnesses. */
+    tiltWitnesses: number;
+    tiltWitnessFailures: number;
   };
   lastError?: string;
 }
