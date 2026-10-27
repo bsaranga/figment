@@ -88,3 +88,13 @@ export {
   FigmentToast,
   registerToast,
 } from "./toast.js";
+
+export {
+  FigmentContextMenu,
+  registerContextMenu,
+  type MenuItem,
+} from "./context-menu.js";
+export {
+  FigmentTooltip,
+  registerTooltip,
+} from "./tooltip.js";
