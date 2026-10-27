@@ -60,3 +60,15 @@ export {
   registerInfiniteCanvas,
   type CanvasView,
 } from "./infinite-canvas.js";
+
+export {
+  FigmentLayerStack,
+  registerLayerStack,
+  type LayerEntry,
+} from "./layer-stack.js";
+export {
+  FigmentMinimap,
+  registerMinimap,
+  type MinimapItem,
+  type MinimapView,
+} from "./minimap.js";
