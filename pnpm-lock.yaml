@@ -108,6 +108,22 @@ importers:
         specifier: 'catalog:'
         version: 7.3.7(@types/node@22.20.5)
 
+  demos/z-scroll-story:
+    dependencies:
+      '@figment/gpu':
+        specifier: workspace:*
+        version: link:../../packages/gpu
+      '@figment/host':
+        specifier: workspace:*
+        version: link:../../packages/host
+      '@figment/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+    devDependencies:
+      vite:
+        specifier: 'catalog:'
+        version: 7.3.7(@types/node@22.20.5)
+
   packages/gpu:
     dependencies:
       '@figment/host':

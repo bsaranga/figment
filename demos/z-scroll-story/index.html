@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>figment — Z-scroll story</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: system-ui, sans-serif;
+      }
+      html {
+        scroll-behavior: auto;
+      }
+      body {
+        margin: 0;
+        background: #07090f;
+        color: #eef2ff;
+      }
+      .intro {
+        position: relative;
+        z-index: 2;
+        max-width: 40rem;
+        margin: 0 auto;
+        padding: 28vh 1.5rem 2rem;
+        text-align: center;
+      }
+      .intro h1 {
+        margin: 0 0 0.75rem;
+        font-size: clamp(2rem, 5vw, 3.25rem);
+        letter-spacing: -0.04em;
+        line-height: 1.05;
+      }
+      .intro p {
+        margin: 0;
+        color: #9aa6c0;
+        font-size: 1.15rem;
+      }
+      figment-z-scroll {
+        min-height: 320vh;
+      }
+      figment-spatial-panel {
+        /* panels live in the stage camera */
+      }
+      .footer {
+        position: relative;
+        z-index: 2;
+        padding: 4rem 1.5rem 20vh;
+        text-align: center;
+        color: #9aa6c0;
+      }
+      .footer a {
+        color: #7c9cff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="intro">
+      <h1>Scroll is a camera.</h1>
+      <p>
+        Panels fly toward you through Z-space. Keep scrolling — they stay
+        clickable and accessible the whole way.
+      </p>
+    </div>
+
+    <figment-z-scroll
+      id="story"
+      track-height="320vh"
+      camera-from="0"
+      camera-to="-900"
+      perspective="1100"
+    >
+      <figment-spatial-panel id="ch1" z="-200" x="12%" y="18%" material="relief">
+        <span slot="title">01 · Enter the scene</span>
+        <p>
+          Real HTML in world depth. Native forms and focus keep working while
+          the camera moves.
+        </p>
+      </figment-spatial-panel>
+
+      <figment-spatial-panel
+        id="ch2"
+        z="-520"
+        x="52%"
+        y="34%"
+        material="glass"
+        rotate-y="-14"
+        rotate-x="8"
+      >
+        <span slot="title">02 · Glass &amp; light</span>
+        <p>
+          Materials and emitters relight captured UI without recapture. Copy
+          stays readable (protected text rects).
+        </p>
+        <label>
+          Focus me
+          <input type="text" value="Still a real input" />
+        </label>
+      </figment-spatial-panel>
+
+      <figment-spatial-panel id="ch3" z="-860" x="22%" y="52%" material="relief">
+        <span slot="title">03 · Through the lens</span>
+        <p>
+          The same kit works on canvas boards and story sites. One design
+          system, every spatial surface.
+        </p>
+      </figment-spatial-panel>
+    </figment-z-scroll>
+
+    <div class="footer">
+      <p>
+        <a href="https://bsaranga.github.io/figment/">figment promo</a>
+        ·
+        <a href="https://github.com/bsaranga/figment">GitHub</a>
+      </p>
+    </div>
+
+    <figment-toast id="toast">Halfway through the story</figment-toast>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
