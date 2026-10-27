@@ -69,7 +69,10 @@ vec4 figmentLight(vec4 c, vec2 uv, vec3 lightSum) {
 }
 `;
 
-export function lightUniformGlsl(resolved: ResolvedEmitter[]): string {
+export function lightUniformGlsl(
+  resolved: ResolvedEmitter[],
+  protect?: { x: number; y: number; width: number; height: number; strength: number }[],
+): string {
   // Build a constant light sum expression from baked emitter params.
   const terms = resolved.map((e) => {
     const dx = `(${e.x.toFixed(4)} - uv.x)`;
@@ -78,10 +81,26 @@ export function lightUniformGlsl(resolved: ResolvedEmitter[]): string {
     const fall = `exp(-${d2} / max(${(e.radius * e.radius).toFixed(6)}, 1e-4))`;
     return `vec3(${e.r.toFixed(4)}, ${e.g.toFixed(4)}, ${e.b.toFixed(4)}) * (${e.intensity.toFixed(4)} * ${fall})`;
   });
-  if (terms.length === 0) {
-    return `c = figmentLight(c, uv, vec3(1.0));`;
+
+  let protectGlsl = "";
+  if (protect && protect.length) {
+    const tests = protect
+      .map(
+        (r, i) =>
+          `float _pt${i} = step(${r.x.toFixed(4)}, uv.x) * step(uv.x, ${(r.x + r.width).toFixed(4)}) * step(${r.y.toFixed(4)}, uv.y) * step(uv.y, ${(r.y + r.height).toFixed(4)}) * ${r.strength.toFixed(4)};`,
+      )
+      .join("\n  ");
+    const mx = protect.map((_, i) => `_pt${i}`).join(", ");
+    protectGlsl = `
+  ${tests}
+  float _protect = max(${mx}, 0.0);
+  lightSum = mix(lightSum, clamp(lightSum, 0.75, 1.35), _protect);`;
   }
-  return `c = figmentLight(c, uv, vec3(1.0) + (${terms.join(" + ")}));`;
+
+  if (terms.length === 0) {
+    return `vec3 lightSum = vec3(1.0);${protectGlsl}\n  c = figmentLight(c, uv, lightSum);`;
+  }
+  return `vec3 lightSum = vec3(1.0) + (${terms.join(" + ")});${protectGlsl}\n  c = figmentLight(c, uv, lightSum);`;
 }
 
 const emittersByLayer = new Map<string, ResolvedEmitter[]>();

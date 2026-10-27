@@ -37,6 +37,14 @@ export interface CompositeLayerInput {
     intensity?: number;
     radius?: number;
   }[];
+  /** M3h: UV rects where copy must stay readable under light/glass. */
+  protectedText?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    strength?: number;
+  }[];
   /** M3d+ persistent materials. */
   material?:
     | { kind: "relief"; bevel?: number; depth?: number }

@@ -99,3 +99,17 @@ export {
   type Emitter,
   type ResolvedEmitter,
 } from "./emitters.js";
+
+export {
+  setProtectedText,
+  getProtectedText,
+  clearProtectedText,
+  resolveProtectedRect,
+  resolveProtectedRects,
+  protectLightGlsl,
+  protectGlassGlsl,
+  PROTECT_LIGHT_MIN,
+  PROTECT_LIGHT_MAX,
+  type ProtectedRect,
+  type ResolvedProtectedRect,
+} from "./protected-text.js";

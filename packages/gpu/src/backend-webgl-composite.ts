@@ -35,6 +35,7 @@ import {
   lightUniformGlsl,
   resolveEmitters,
 } from "./emitters.js";
+import { resolveProtectedRects } from "./protected-text.js";
 import { FigmentUnsupportedError } from "@figment/host";
 
 type TexElementSubImage2D = (
@@ -62,6 +63,7 @@ function fragmentSrc(
   effects: EffectDesc[],
   material?: CompositeLayerInput["material"],
   emitters?: CompositeLayerInput["emitters"],
+  protect?: CompositeLayerInput["protectedText"],
 ): string {
   const chain = validateEffectChain(effects);
   // Stage 1: UV warps (ripple). Stage 2: resample (chromatic/dissolve/ripple).
@@ -99,7 +101,10 @@ function fragmentSrc(
     materialOp = glassCallGlsl(resolveGlass(material));
   }
 
-  const lightOp = lightUniformGlsl(resolveEmitters(emitters ?? []));
+  const lightOp = lightUniformGlsl(
+    resolveEmitters(emitters ?? []),
+    resolveProtectedRects(protect ?? []),
+  );
 
   return `
 precision mediump float;
@@ -179,16 +184,22 @@ export function createWebGLComposite(canvas: HTMLCanvasElement): CompositeBacken
     effects: EffectDesc[],
     material?: CompositeLayerInput["material"],
     emitters?: CompositeLayerInput["emitters"],
+    protect?: CompositeLayerInput["protectedText"],
   ): WebGLProgram {
     const key = JSON.stringify([
       effects.map((e) => e.kind),
       material?.kind,
       material,
       emitters,
+      protect,
     ]);
     let prog = programs.get(key);
     if (prog) return prog;
-    const fs = compile(gl, gl.FRAGMENT_SHADER, fragmentSrc(effects, material, emitters));
+    const fs = compile(
+      gl,
+      gl.FRAGMENT_SHADER,
+      fragmentSrc(effects, material, emitters, protect),
+    );
     prog = gl.createProgram();
     if (!prog) throw new FigmentUnsupportedError("missing-api", "WebGL createProgram failed");
     gl.attachShader(prog, vs);
@@ -224,6 +235,7 @@ export function createWebGLComposite(canvas: HTMLCanvasElement): CompositeBacken
         validateEffectChain(effects);
         const material = layer.material;
         const emitters = layer.emitters;
+        const protect = layer.protectedText;
 
         const w = Math.max(1, Math.ceil(layer.width));
         const h = Math.max(1, Math.ceil(layer.height));
@@ -232,7 +244,7 @@ export function createWebGLComposite(canvas: HTMLCanvasElement): CompositeBacken
         // Texture cache ignores emitter positions (lights are uniforms only —
         // moving a light must not force a recapture).
         const effectsKey = JSON.stringify([effects, material]);
-        const emittersKey = JSON.stringify(emitters);
+        const emittersKey = JSON.stringify([emitters, protect]);
         if (
           !rec ||
           rec.width !== w ||
@@ -256,7 +268,7 @@ export function createWebGLComposite(canvas: HTMLCanvasElement): CompositeBacken
             height: h,
             effectsKey,
             emittersKey,
-            program: programFor(effects, material, emitters),
+            program: programFor(effects, material, emitters, protect),
           };
           textures.set(key, rec);
         }
