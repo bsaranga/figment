@@ -6,9 +6,13 @@ import {
   validateEffectChain,
   type CompositeBackend,
   type CompositeFrameInput,
-  type CompositeLayerInput,
   type EffectDesc,
 } from "./composite.js";
+import {
+  EFFECT_GLSL_LIB,
+  effectColorGlsl,
+  effectUvGlsl,
+} from "./effects/sampling.js";
 import { FigmentUnsupportedError } from "@figment/host";
 
 type TexElementSubImage2D = (
@@ -33,50 +37,24 @@ void main() {
 }`;
 
 function fragmentSrc(effects: EffectDesc[]): string {
+  const chain = validateEffectChain(effects);
+  // Stage 1: UV warps (ripple). Stage 2: resample (chromatic/dissolve/ripple).
+  const uvOps = chain.map((e) => effectUvGlsl(e)).filter(Boolean).join("\n  ");
+  const colorOps = chain.map((e) => effectColorGlsl(e)).filter(Boolean).join("\n  ");
+
   return `
 precision mediump float;
 varying vec2 v_uv;
 uniform sampler2D u_tex;
 uniform float u_alpha;
-
-vec4 figmentRipple(vec4 c, float amp) {
-  return vec4(c.rgb, c.a * (1.0 - abs(amp) * 0.15));
-}
-vec4 figmentChromatic(vec4 c, float off) {
-  return vec4(c.r * (1.0 + off * 0.1), c.g, c.b * (1.0 - off * 0.1), c.a);
-}
-vec4 figmentDissolve(vec4 c, float p) {
-  return vec4(c.rgb, c.a * (1.0 - p));
-}
-
+${EFFECT_GLSL_LIB}
 void main() {
-  vec4 base = texture2D(u_tex, v_uv) * u_alpha;
-  ${buildBody(effects)}
-  gl_FragColor = ${effects.length ? `c${effects.length}` : "base"};
+  vec2 uv = v_uv;
+  ${uvOps}
+  vec4 c = texture2D(u_tex, uv) * u_alpha;
+  ${colorOps}
+  gl_FragColor = c;
 }`;
-}
-
-function buildBody(effects: EffectDesc[]): string {
-  const chain = validateEffectChain(effects);
-  return chain
-    .map((e, i) => {
-      const src = i === 0 ? "base" : `c${i}`;
-      const dst = `c${i + 1}`;
-      switch (e.kind) {
-        case "ripple":
-          return `vec4 ${dst} = figmentRipple(${src}, ${e.amplitude.toFixed(4)});`;
-        case "chromatic":
-          return `vec4 ${dst} = figmentChromatic(${src}, ${e.offset.toFixed(4)});`;
-        case "dissolve":
-          return `vec4 ${dst} = figmentDissolve(${src}, ${e.progress.toFixed(4)});`;
-        case "custom":
-          // M3c wires real custom WGSL; identity keeps the pass live.
-          return `vec4 ${dst} = ${src};`;
-        default:
-          return "";
-      }
-    })
-    .join("\n  ");
 }
 
 function compile(gl: WebGLRenderingContext, type: number, src: string): WebGLShader {
@@ -105,6 +83,7 @@ export function createWebGLComposite(canvas: HTMLCanvasElement): CompositeBacken
     alpha: true,
     premultipliedAlpha: true,
     antialias: true,
+    preserveDrawingBuffer: true,
   });
   if (!glMaybe) {
     throw new FigmentUnsupportedError("missing-api", "WebGL context unavailable");
@@ -127,7 +106,7 @@ export function createWebGLComposite(canvas: HTMLCanvasElement): CompositeBacken
   const buf = gl.createBuffer();
   if (!buf) throw new FigmentUnsupportedError("missing-api", "WebGL createBuffer failed");
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(16), gl.DYNAMIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(24), gl.DYNAMIC_DRAW);
 
   function programFor(effects: EffectDesc[]): WebGLProgram {
     const key = JSON.stringify(effects.map((e) => e.kind));

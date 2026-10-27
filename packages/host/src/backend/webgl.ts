@@ -144,7 +144,7 @@ export function createWebGLBackend(canvas: HTMLCanvasElement): WebGLBackend {
   const buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   // pos.xy + uv.xy per vertex (quad)
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(16), gl.DYNAMIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(24), gl.DYNAMIC_DRAW);
 
   const aPos = gl.getAttribLocation(program, "a_pos");
   const aUv = gl.getAttribLocation(program, "a_uv");
