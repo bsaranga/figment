@@ -59,13 +59,22 @@ export default defineConfig({
     ...devices["Desktop Chrome"],
     launchOptions,
     trace: "on-first-retry",
+    baseURL: "http://127.0.0.1:5173",
   },
-  webServer: {
-    command: "pnpm --filter @figment/demo-vanilla-mount dev",
-    port: 5173,
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-  },
+  webServer: [
+    {
+      command: "pnpm --filter @figment/demo-vanilla-mount dev",
+      port: 5173,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    {
+      command: "pnpm --filter @figment/demo-react-mount dev",
+      port: 5174,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+  ],
   projects: [
     {
       name: "html-in-canvas",

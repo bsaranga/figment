@@ -56,20 +56,16 @@ export function drawLayers2D(opts: Draw2DOptions): number {
       ctx.translate(-originX, -originY);
     }
 
-    const draw = (
-      ctx as CanvasRenderingContext2D & {
-        drawElementImage: (
-          el: Element,
-          ...rest: number[]
-        ) => unknown;
-      }
-    ).drawElementImage;
+    // Must stay a method call on ctx — detaching drawElementImage loses `this`.
+    type Drawable2D = CanvasRenderingContext2D & {
+      drawElementImage: (el: Element, ...rest: number[]) => unknown;
+    };
 
     if (destW !== undefined && destH !== undefined && (destW !== rect.width * unitScale.x || destH !== rect.height * unitScale.y)) {
       // explicit dest box
-      draw(el, dx, dy, destW, destH);
+      (ctx as Drawable2D).drawElementImage(el, dx, dy, destW, destH);
     } else {
-      draw(el, dx, dy);
+      (ctx as Drawable2D).drawElementImage(el, dx, dy);
     }
 
     ctx.restore();

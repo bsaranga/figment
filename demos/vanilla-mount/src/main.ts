@@ -4,6 +4,13 @@ import {
   type Host,
   VERSION,
 } from "@figment/host";
+import {
+  attachNestedCanvas,
+  FORM_HTML,
+  FORM_ID,
+  FORM_STYLE,
+  PROFILE_LAYER_OPTS,
+} from "../../shared/profile-form";
 
 const status = document.querySelector<HTMLDivElement>("#status")!;
 const stage = document.querySelector<HTMLCanvasElement>("#stage")!;
@@ -24,34 +31,12 @@ report("", `figment host ${VERSION} · mounting…`);
 
 // App DOM (any framework could own this tree)
 const form = document.createElement("form");
-form.id = "profile";
-form.style.cssText = [
-  "display:flex",
-  "flex-direction:column",
-  "gap:10px",
-  "width:280px",
-  "padding:16px",
-  "background:#1b2230",
-  "color:#e8ecf4",
-  "border-radius:12px",
-  "font:14px system-ui",
-  "box-sizing:border-box",
-].join(";");
-
-form.innerHTML = `
-  <strong>Profile</strong>
-  <label>Name <input name="name" value="Ada" data-testid="name" style="width:100%" /></label>
-  <label>Bio <textarea name="bio" rows="2" data-testid="bio" style="width:100%">Hello</textarea></label>
-  <button type="submit" data-testid="save">Save</button>
-  <output data-testid="out"></output>
-`;
+form.id = FORM_ID;
+form.style.cssText = FORM_STYLE;
+form.innerHTML = FORM_HTML;
 
 // Nested canvas to exercise M1c mark/restore
-const nested = document.createElement("canvas");
-nested.width = 80;
-nested.height = 40;
-nested.style.cssText = "width:80px;height:40px;background:#c23f53;border-radius:6px";
-form.append(nested);
+attachNestedCanvas(form);
 
 stage.append(form);
 
@@ -69,15 +54,16 @@ try {
 host.mount(stage);
 
 const layer = host.layer(form, {
-  id: "profile",
-  transform: { x: 24, y: 24 },
-  drawAt: { x: 24, y: 24 },
+  id: PROFILE_LAYER_OPTS.id,
+  transform: { ...PROFILE_LAYER_OPTS.transform },
+  drawAt: { ...PROFILE_LAYER_OPTS.drawAt },
 });
 
 form.addEventListener("submit", (e) => {
   e.preventDefault();
   const out = form.querySelector<HTMLOutputElement>("[data-testid=out]")!;
-  const name = (form.querySelector("[data-testid=name]") as HTMLInputElement).value;
+  const name = (form.querySelector("[data-testid=name]") as HTMLInputElement)
+    .value;
   out.textContent = `Saved ${name}`;
   layer.invalidate();
 });
@@ -88,7 +74,7 @@ dumpState(host);
 // Expose for Playwright
 declare global {
   interface Window {
-    __figment: { host: Host };
+    __figment: { host: Host; framework?: string };
   }
 }
-window.__figment = { host };
+window.__figment = { host, framework: "vanilla" };
