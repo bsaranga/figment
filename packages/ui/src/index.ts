@@ -98,3 +98,14 @@ export {
   FigmentTooltip,
   registerTooltip,
 } from "./tooltip.js";
+
+export {
+  FigmentVirtualList,
+  registerVirtualList,
+  type VirtualListOptions,
+} from "./virtual-list.js";
+export {
+  FigmentVirtualGrid,
+  registerVirtualGrid,
+  type GridSize,
+} from "./virtual-grid.js";
