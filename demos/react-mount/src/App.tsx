@@ -77,6 +77,7 @@ export function App({ stage, statusEl, logEl }: AppProps) {
         layer?.invalidate();
       });
 
+      await host.paintOnce();
       report(statusEl, "ok", "host mounted · React owns the form DOM");
       logEl.textContent = JSON.stringify(host.state(), null, 2);
       window.__figment = { host, framework: "react" };

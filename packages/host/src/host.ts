@@ -230,8 +230,8 @@ class HostImpl implements Host {
       cover.style.bottom = "auto";
       parent.append(cover);
     }
-    // During probe, drop pointer events on the canvas (Underglass contract).
-    this.canvas.style.pointerEvents = "none";
+    // Visual cover only — keep pointer events on the canvas so in-canvas
+    // controls and elementFromPoint work while pending (seamless is visual).
   }
 
   private revealIfComplete(drawn: number): void {
@@ -244,7 +244,6 @@ class HostImpl implements Host {
       return;
     }
     this.pendingEnable = false;
-    this.canvas.style.pointerEvents = this.savedPointerEvents || "auto";
     delete this.canvas.dataset.figmentPending;
     this.pendingCover?.remove();
     this.pendingCover = null;
@@ -273,7 +272,6 @@ class HostImpl implements Host {
   private cancelSeamlessEnable(): void {
     if (!this.pendingEnable) return;
     this.pendingEnable = false;
-    this.canvas.style.pointerEvents = this.savedPointerEvents || "auto";
     delete this.canvas.dataset.figmentPending;
     this.pendingCover?.remove();
     this.pendingCover = null;
@@ -364,8 +362,9 @@ class HostImpl implements Host {
     // Pin hit order + clip + tilt/Z CSS to the browser stack before the witness.
     this.refreshLayerCss(record);
     this.syncLayerGeometry(record);
-    // One paint so the browser has a paint record + live geometry for hits.
-    this.flushPaint(true);
+    // Schedule a browser paint — do NOT flushPaint here: drawElementImage
+    // throws "No cached paint record" outside the paint event.
+    this.requestPaint();
 
     // M2g: refuse tilt when the browser cannot hit the transformed quad.
     // Witness runs AFTER geometry sync + paint — drawable children need both
@@ -394,13 +393,31 @@ class HostImpl implements Host {
             : typeof record.origin === "object"
               ? record.origin.y
               : 0.5;
+      // Hit-testing needs pointer events even if seamless enable is still pending.
+      const prevPe = this.canvas.style.pointerEvents;
+      this.canvas.style.pointerEvents = "auto";
       const witness = witnessTilt({
         element: el,
         tilt: record.tilt,
         originX,
         originY,
-        syncHits: () => this.syncLayerGeometry(record),
+        // Push hit order only — a projective canvasTransform here blanks
+        // elementFromPoint (same footgun as canvasClip / WICG #186).
+        syncHits: () => {
+          const canvas = this.canvas as HTMLCanvasElement & {
+            updateElementGeometry?: (
+              e: Element,
+              init?: { preserveHitTestOrder?: boolean },
+            ) => void;
+          };
+          if (typeof canvas.updateElementGeometry === "function") {
+            canvas.updateElementGeometry(el, {
+              preserveHitTestOrder: record.preserveHitTestOrder,
+            });
+          }
+        },
       });
+      this.canvas.style.pointerEvents = prevPe;
       this.metrics.tiltWitnesses += 1;
       if (!witness.ok) {
         this.metrics.tiltWitnessFailures += 1;

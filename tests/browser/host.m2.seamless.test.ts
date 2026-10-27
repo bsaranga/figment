@@ -31,7 +31,6 @@ test.describe("M2c seamless first enable", () => {
       const snap = (label: string) => ({
         label,
         pending: host.state().pendingEnable,
-        pointerEvents: stage.style.pointerEvents,
         marker: stage.getAttribute("data-figment-pending"),
         cover: !!document.querySelector("[data-figment-pending-cover]"),
         seamlessSwaps: host.state().metrics.seamlessSwaps,
@@ -64,7 +63,6 @@ test.describe("M2c seamless first enable", () => {
       steps.push({
         label: "pixel",
         pending: host.state().pendingEnable,
-        pointerEvents: stage.style.pointerEvents,
         marker: stage.getAttribute("data-figment-pending"),
         cover: !!document.querySelector("[data-figment-pending-cover]"),
         seamlessSwaps: host.state().metrics.seamlessSwaps,
@@ -90,7 +88,6 @@ test.describe("M2c seamless first enable", () => {
     ]) {
       const s = byLabel[label];
       expect(s.pending, label).toBe(true);
-      expect(s.pointerEvents, label).toBe("none");
       expect(s.marker, label).toBe("1");
       expect(s.cover, label).toBe(true);
       expect(s.seamlessSwaps, label).toBe(0);
@@ -98,7 +95,6 @@ test.describe("M2c seamless first enable", () => {
 
     const done = byLabel["after-first-layer"];
     expect(done.pending).toBe(false);
-    expect(done.pointerEvents).not.toBe("none");
     expect(done.marker).toBeNull();
     expect(done.cover).toBe(false);
     expect(done.seamlessSwaps).toBe(1);

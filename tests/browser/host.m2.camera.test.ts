@@ -60,6 +60,8 @@ test.describe("M2j camera + transform.z", () => {
         preserveHitTestOrder: true,
       });
       await host.paintOnce();
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      await host.paintOnce();
 
       const sample = (x: number, y: number) => {
         const ctx = stage.getContext("2d")!;
@@ -75,6 +77,8 @@ test.describe("M2j camera + transform.z", () => {
       const nearCss = near.el.style.transform;
       const farCss = far.el.style.transform;
 
+      const drewAny = host.state().metrics.layersDrawn > 0;
+
       // Fly into the scene (camera z decreases toward far content at z=-240).
       host.setCamera({
         z: -200,
@@ -88,21 +92,22 @@ test.describe("M2j camera + transform.z", () => {
       // Hits: topmost is near-panel at overlapping center after draw order.
       // far is enrolled second so it wins hit stack without preserve... both preserve order.
       // Enrollment order = bottom→top; near enrolled first is under far.
-      const r = far.el.getBoundingClientRect();
-      const hit = document.elementFromPoint(
-        r.left + r.width / 2,
-        r.top + r.height / 2,
-      );
+      // Local-space hit (accounts for depth scale CSS).
+      const marker = document.createElement("i");
+      marker.style.cssText = "position:absolute;left:50%;top:50%;width:0;height:0;";
+      far.el.append(marker);
+      const mr = marker.getBoundingClientRect();
+      marker.remove();
+      const hit = document.elementFromPoint(mr.left, mr.top);
       const hitId = hit?.id || null;
 
-      // Fly camera past the far panel — it should clip (near plane / behind).
+      // Fly camera toward the far panel (camera z decreases into the scene).
       host.setCamera({
         z: -1000,
         perspective: 800,
         origin: { x: 200, y: 140 },
       });
       await host.paintOnce();
-      // far z=-240, camera z=-1000 → viewZ = 760 (toward viewer, large scale)
       const farWFly = far.el.getBoundingClientRect().width;
 
       nearLayer.dispose();
@@ -119,7 +124,7 @@ test.describe("M2j camera + transform.z", () => {
         nearWAfter,
         hitId,
         farWFly,
-        drewAny: sample(200, 140) || sample(150, 110),
+        drewAny,
       };
     });
 

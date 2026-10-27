@@ -78,6 +78,8 @@ form.addEventListener("submit", (e) => {
   layer.invalidate();
 });
 
+// Wait for the first complete frame before claiming "ok" (M2c seamless).
+await host.paintOnce();
 report("ok", "host mounted · interact with the form inside the canvas");
 dumpState(host);
 
