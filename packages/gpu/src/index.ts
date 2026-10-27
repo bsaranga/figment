@@ -129,3 +129,12 @@ export {
   type MotionChannel,
   type EasingName,
 } from "./motion/transition.js";
+
+export {
+  presence,
+  DEFAULT_ENTER,
+  DEFAULT_EXIT,
+  DISSOLVE_EXIT,
+  type PresenceOptions,
+  type PresenceHandle,
+} from "./motion/presence.js";
