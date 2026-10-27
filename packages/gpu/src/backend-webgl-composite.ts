@@ -6,6 +6,7 @@ import {
   validateEffectChain,
   type CompositeBackend,
   type CompositeFrameInput,
+  type CompositeLayerInput,
   type EffectDesc,
 } from "./composite.js";
 import {
@@ -14,6 +15,11 @@ import {
   effectUvGlsl,
 } from "./effects/sampling.js";
 import { getEffect, clampParam } from "./effects/schema.js";
+import {
+  RELIEF_GLSL,
+  resolveRelief,
+  reliefCallGlsl,
+} from "./materials/relief.js";
 import { FigmentUnsupportedError } from "@figment/host";
 
 type TexElementSubImage2D = (
@@ -37,7 +43,10 @@ void main() {
   v_uv = a_uv;
 }`;
 
-function fragmentSrc(effects: EffectDesc[]): string {
+function fragmentSrc(
+  effects: EffectDesc[],
+  material?: CompositeLayerInput["material"],
+): string {
   const chain = validateEffectChain(effects);
   // Stage 1: UV warps (ripple). Stage 2: resample (chromatic/dissolve/ripple).
   const uvOps = chain.map((e) => effectUvGlsl(e)).filter(Boolean).join("\n  ");
@@ -65,18 +74,25 @@ function fragmentSrc(effects: EffectDesc[]): string {
     ...customCalls,
   ].join("\n  ");
 
+  const materialOp =
+    material && material.kind === "relief"
+      ? reliefCallGlsl(resolveRelief(material))
+      : "";
+
   return `
 precision mediump float;
 varying vec2 v_uv;
 uniform sampler2D u_tex;
 uniform float u_alpha;
 ${EFFECT_GLSL_LIB}
+${RELIEF_GLSL}
 ${customFns.join("\n")}
 void main() {
   vec2 uv = v_uv;
   ${uvOps}
   vec4 c = texture2D(u_tex, uv) * u_alpha;
   ${colorOpsFull}
+  ${materialOp}
   gl_FragColor = c;
 }`;
 }
@@ -132,11 +148,14 @@ export function createWebGLComposite(canvas: HTMLCanvasElement): CompositeBacken
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(24), gl.DYNAMIC_DRAW);
 
-  function programFor(effects: EffectDesc[]): WebGLProgram {
-    const key = JSON.stringify(effects.map((e) => e.kind));
+  function programFor(
+    effects: EffectDesc[],
+    material?: CompositeLayerInput["material"],
+  ): WebGLProgram {
+    const key = JSON.stringify([effects.map((e) => e.kind), material?.kind, material]);
     let prog = programs.get(key);
     if (prog) return prog;
-    const fs = compile(gl, gl.FRAGMENT_SHADER, fragmentSrc(effects));
+    const fs = compile(gl, gl.FRAGMENT_SHADER, fragmentSrc(effects, material));
     prog = gl.createProgram();
     if (!prog) throw new FigmentUnsupportedError("missing-api", "WebGL createProgram failed");
     gl.attachShader(prog, vs);
@@ -170,12 +189,13 @@ export function createWebGLComposite(canvas: HTMLCanvasElement): CompositeBacken
         const layer = layers[i]!;
         const effects = layer.effects ?? [];
         validateEffectChain(effects);
+        const material = layer.material;
 
         const w = Math.max(1, Math.ceil(layer.width));
         const h = Math.max(1, Math.ceil(layer.height));
         const key = `L${i}`;
         let rec = textures.get(key);
-        const effectsKey = JSON.stringify(effects);
+        const effectsKey = JSON.stringify([effects, material]);
         if (!rec || rec.width !== w || rec.height !== h || rec.effectsKey !== effectsKey) {
           if (rec) gl.deleteTexture(rec.texture);
           const texture = gl.createTexture();
@@ -192,7 +212,7 @@ export function createWebGLComposite(canvas: HTMLCanvasElement): CompositeBacken
             width: w,
             height: h,
             effectsKey,
-            program: programFor(effects),
+            program: programFor(effects, material),
           };
           textures.set(key, rec);
         }

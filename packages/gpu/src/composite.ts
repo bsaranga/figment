@@ -23,6 +23,8 @@ export interface CompositeLayerInput {
   height: number;
   opacity?: number;
   effects?: EffectDesc[];
+  /** M3d+ persistent materials (brightness-safe). */
+  material?: { kind: "relief"; bevel?: number; depth?: number };
 }
 
 export interface CompositeFrameInput {

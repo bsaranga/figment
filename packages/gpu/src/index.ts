@@ -49,3 +49,16 @@ export {
   type EffectParamSpec,
   type CompiledEffect,
 } from "./effects/schema.js";
+
+export {
+  resolveRelief,
+  setRelief,
+  getMaterial,
+  clearMaterials,
+  reliefCallGlsl,
+  RELIEF_GLSL,
+  RELIEF_BRIGHTNESS_RANGE,
+  type ReliefDesc,
+  type ResolvedRelief,
+  type MaterialState,
+} from "./materials/relief.js";
