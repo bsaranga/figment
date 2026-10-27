@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-unit:
+    name: Typecheck + unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  browser:
+    name: Browser (Chrome Canary)
+    runs-on: ubuntu-latest
+    needs: typecheck-unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chrome Canary
+        id: chrome
+        run: |
+          npx --yes @puppeteer/browsers install chrome@canary --path "$HOME/chrome-for-testing"
+          echo "path=$(find "$HOME/chrome-for-testing" -type f -name 'Google Chrome for Testing' | head -1)" >> "$GITHUB_OUTPUT"
+      - name: Run Playwright smoke
+        env:
+          FIGMENT_CHROME_PATH: ${{ steps.chrome.outputs.path }}
+        run: pnpm test:browser
+        continue-on-error: true

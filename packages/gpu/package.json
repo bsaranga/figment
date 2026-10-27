@@ -1,0 +1,21 @@
+{
+  "name": "@figment/gpu",
+  "version": "0.0.0",
+  "description": "figment GPU framework — effects, materials, lights, motion on live DOM layers",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@figment/host": "workspace:*"
+  }
+}

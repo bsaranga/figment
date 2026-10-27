@@ -1,0 +1,22 @@
+{
+  "name": "@figment/ui",
+  "version": "0.0.0",
+  "description": "figment spatial UI kit — Web Components for canvas-native apps",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@figment/host": "workspace:*",
+    "@figment/gpu": "workspace:*"
+  }
+}

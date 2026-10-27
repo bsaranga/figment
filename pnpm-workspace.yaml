@@ -1,0 +1,11 @@
+packages:
+  - "packages/*"
+  - "demos/*"
+
+catalog:
+  typescript: ^5.9.3
+  vitest: ^3.2.4
+  vite: ^7.1.9
+  "@playwright/test": ^1.56.1
+  "@types/node": ^22.19.1
+  jsdom: ^26.1.0

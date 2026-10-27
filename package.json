@@ -1,0 +1,27 @@
+{
+  "name": "figment",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Full stack for canvas-native apps: surface runtime + GPU framework + spatial UI kit on HTML-in-Canvas",
+  "type": "module",
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/*\" run build",
+    "typecheck": "tsc -b tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:browser": "playwright test",
+    "dev": "pnpm --filter @figment/demo-vanilla-mount dev",
+    "lint": "pnpm typecheck"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}
