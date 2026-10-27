@@ -4,6 +4,7 @@
  */
 import { FigmentUnsupportedError } from "@figment/host";
 import { getEffect, clampParam } from "./effects/schema.js";
+import { assertContract, type ContentFlags, type InteractionMode } from "./contracts.js";
 
 /** Maximum chained pixel-moving effects per layer. */
 export const MAX_EFFECT_OPS = 3;
@@ -77,10 +78,20 @@ export interface CompositeBackend {
 }
 
 /**
- * Validate an effect chain (shader budget + known kinds).
+ * Validate an effect chain (shader budget + known kinds + interaction contract).
  * Throws when the chain cannot be compiled into a single pass.
  */
-export function validateEffectChain(effects: EffectDesc[]): EffectDesc[] {
+export function validateEffectChain(
+  effects: EffectDesc[],
+  contract?: { mode: InteractionMode; content: ContentFlags },
+): EffectDesc[] {
+  if (contract) {
+    assertContract({
+      mode: contract.mode,
+      content: contract.content,
+      operation: "effect",
+    });
+  }
   if (effects.length > MAX_EFFECT_OPS) {
     throw new FigmentUnsupportedError(
       "probe-failed",

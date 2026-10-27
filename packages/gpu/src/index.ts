@@ -15,8 +15,12 @@ export type MaterialDesc =
       dispersion?: number;
     };
 
-/** Safety contract for effects vs live controls. */
-export type InteractionMode = "decorative" | "inert" | "material";
+export type {
+  InteractionMode,
+  ContentFlags,
+  ContractRule,
+  Operation,
+} from "./contracts.js";
 
 export const GPU_VERSION = "0.0.0";
 
@@ -151,3 +155,14 @@ export {
   type ScrollChannel,
   type ScrollChannelSpec,
 } from "./motion/scroll-track.js";
+
+export {
+  assertContract,
+  recheckContract,
+  withInert,
+  operationMovesPixels,
+  setInteractionMode,
+  getInteractionMode,
+  clearInteractionModes,
+  CONTRACTS,
+} from "./contracts.js";
