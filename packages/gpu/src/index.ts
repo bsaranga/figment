@@ -113,3 +113,19 @@ export {
   type ProtectedRect,
   type ResolvedProtectedRect,
 } from "./protected-text.js";
+
+export {
+  transition,
+  transitionGroup,
+  startMotionLoop,
+  sampleMotion,
+  ease,
+  IDENTITY_FRAME,
+  DEFAULT_MOTION,
+  type MotionDesc,
+  type MotionFrame,
+  type MotionHandle,
+  type MotionItem,
+  type MotionChannel,
+  type EasingName,
+} from "./motion/transition.js";
