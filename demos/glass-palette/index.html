@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>figment — glass palette</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(900px 500px at 15% -10%, rgba(124, 156, 255, 0.22), transparent 60%),
+          radial-gradient(800px 480px at 90% 10%, rgba(196, 108, 255, 0.16), transparent 55%),
+          #07090f;
+        color: #eef2ff;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 12vh 1.5rem 4rem;
+      }
+      h1 {
+        margin: 0 0 0.75rem;
+        font-size: clamp(2rem, 5vw, 3rem);
+        letter-spacing: -0.04em;
+      }
+      .lede {
+        color: #9aa6c0;
+        font-size: 1.15rem;
+        margin: 0 0 2rem;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 2.5rem;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: color-mix(in srgb, #c8d8ff 18%, transparent);
+        backdrop-filter: blur(12px);
+        font-size: 0.92rem;
+      }
+      .chip button {
+        border: 0;
+        background: transparent;
+        color: #7c9cff;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 600;
+      }
+      figment-spatial-panel {
+        position: relative;
+        left: auto !important;
+        top: auto !important;
+        display: block;
+        margin: 1rem 0;
+      }
+      kbd {
+        font-family: ui-monospace, monospace;
+        font-size: 0.85em;
+        padding: 2px 6px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.06);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Glass palette.</h1>
+      <p class="lede">
+        Frosted command surface + glass materials on real HTML. Press
+        <kbd>⌘</kbd><kbd>K</kbd> to open. Input stays typeable — no screenshot
+        tricks.
+      </p>
+
+      <div class="row">
+        <span class="chip">
+          ⌘K palette
+          <button type="button" id="open-pal">open</button>
+        </span>
+        <span class="chip">
+          Glass panel
+          <button type="button" id="flip-glass">toggle</button>
+        </span>
+        <span class="chip">
+          Toast
+          <button type="button" id="show-toast">show</button>
+        </span>
+      </div>
+
+      <figment-spatial-panel id="glass-panel" material="glass" x="0" y="0">
+        <span slot="title">Glass surface</span>
+        <p>
+          Refraction + tint over captured HTML. Try focusing this field while
+          the palette is open on top:
+        </p>
+        <label>
+          Project name
+          <input id="project" type="text" value="Aurora board" />
+        </label>
+      </figment-spatial-panel>
+
+      <figment-spatial-panel id="relief-panel" material="relief" x="0" y="0">
+        <span slot="title">Relief surface</span>
+        <p>Bevel / depth with brightness-safe contrast for body copy.</p>
+      </figment-spatial-panel>
+    </main>
+
+    <figment-command-palette id="palette"></figment-command-palette>
+    <figment-toast id="toast">Palette + glass demo</figment-toast>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
