@@ -36,47 +36,61 @@ export function App({ stage, statusEl, logEl }: AppProps) {
     const form = formRef.current;
     if (!form || hostRef.current) return;
 
-    report(statusEl, "", `figment host ${VERSION} · React mounting…`);
+    let cancelled = false;
+    let layer: LayerHandle | null = null;
 
-    let host: Host;
-    try {
-      host = createHost(stage, { backend: "2d" });
-    } catch (e) {
-      if (e instanceof FigmentUnsupportedError) {
-        report(statusEl, "err", `${e.reason}: ${e.message}`);
+    void (async () => {
+      report(statusEl, "", `figment host ${VERSION} · React mounting…`);
+
+      let host: Host;
+      try {
+        host = createHost(stage, { backend: "2d" });
+        await host.admit();
+      } catch (e) {
+        if (e instanceof FigmentUnsupportedError) {
+          report(statusEl, "err", `${e.reason}: ${e.message}`);
+          throw e;
+        }
         throw e;
       }
-      throw e;
-    }
+      if (cancelled) {
+        await host.destroy();
+        return;
+      }
 
-    attachNestedCanvas(form);
-    host.mount(stage);
-    const layer: LayerHandle = host.layer(form, {
-      id: PROFILE_LAYER_OPTS.id,
-      transform: { ...PROFILE_LAYER_OPTS.transform },
-      drawAt: { ...PROFILE_LAYER_OPTS.drawAt },
-    });
-    hostRef.current = host;
+      attachNestedCanvas(form);
+      host.mount(stage);
+      layer = host.layer(form, {
+        id: PROFILE_LAYER_OPTS.id,
+        transform: { ...PROFILE_LAYER_OPTS.transform },
+        drawAt: { ...PROFILE_LAYER_OPTS.drawAt },
+      });
+      hostRef.current = host;
 
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const out = form.querySelector<HTMLOutputElement>("[data-testid=out]")!;
-      const name = (
-        form.querySelector("[data-testid=name]") as HTMLInputElement
-      ).value;
-      out.textContent = `Saved ${name}`;
-      layer.invalidate();
-    });
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const out = form.querySelector<HTMLOutputElement>("[data-testid=out]")!;
+        const name = (
+          form.querySelector("[data-testid=name]") as HTMLInputElement
+        ).value;
+        out.textContent = `Saved ${name}`;
+        layer?.invalidate();
+      });
 
-    report(statusEl, "ok", "host mounted · React owns the form DOM");
-    logEl.textContent = JSON.stringify(host.state(), null, 2);
-    window.__figment = { host, framework: "react" };
-    setReady(true);
+      report(statusEl, "ok", "host mounted · React owns the form DOM");
+      logEl.textContent = JSON.stringify(host.state(), null, 2);
+      window.__figment = { host, framework: "react" };
+      setReady(true);
+    })();
 
     return () => {
-      layer.dispose();
-      void host.destroy();
-      hostRef.current = null;
+      cancelled = true;
+      layer?.dispose();
+      const host = hostRef.current;
+      if (host) {
+        void host.destroy();
+        hostRef.current = null;
+      }
     };
   }, [stage, statusEl, logEl]);
 

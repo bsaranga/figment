@@ -44,6 +44,17 @@ export {
 
 export { SIDE_EFFECT_ATTRIBUTES } from "./mutations.js";
 
+export {
+  runPixelProbe,
+  assertPixelProbe,
+  parseHexColor,
+  colorMatches,
+  PROBE_COLOR,
+  type PixelProbeResult,
+  type PixelProbeOptions,
+  type Rgb,
+} from "./admission.js";
+
 export { createHost } from "./host.js";
 
 export const VERSION = "0.1.0";

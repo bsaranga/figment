@@ -51,6 +51,16 @@ try {
   throw e;
 }
 
+try {
+  await host.admit();
+} catch (e) {
+  if (e instanceof FigmentUnsupportedError) {
+    report("err", `${e.reason}: ${e.message}`);
+    throw e;
+  }
+  throw e;
+}
+
 host.mount(stage);
 
 const layer = host.layer(form, {

@@ -21,6 +21,7 @@ import { attachUnits, type UnitBridge, type UnitState } from "./units.js";
 import { LayerRegistry, type LayerRecord } from "./layers.js";
 import { buildState, createMetrics, type Metrics } from "./diagnostics.js";
 import { drawLayers2D } from "./backend/2d.js";
+import { assertPixelProbe, type PixelProbeResult } from "./admission.js";
 import type {
   CreateHostOptions,
   Host,
@@ -82,6 +83,7 @@ class HostImpl implements Host {
   private lastError: string | undefined;
   private pendingPaintOnce: (() => void)[] = [];
   private mountRoot: ParentNode | null = null;
+  private admission: PixelProbeResult | null = null;
 
   constructor(canvas: HTMLCanvasElement, options: CreateHostOptions) {
     if (options.backend !== "2d") {
@@ -170,6 +172,31 @@ class HostImpl implements Host {
     this.mountRoot = null;
     this.registry.markAllDirty();
     this.requestPaint();
+  }
+
+  async admit(): Promise<PixelProbeResult> {
+    if (this.destroyed) throw new EnrollmentError("host destroyed");
+    this.health = "pending";
+    try {
+      const result = await assertPixelProbe();
+      this.admission = result;
+      this.health = "healthy";
+      this.lastError = undefined;
+      return result;
+    } catch (e) {
+      this.health = "failed";
+      this.lastError = e instanceof Error ? e.message : String(e);
+      this.admission = {
+        ok: false,
+        expectedHex: "#000000",
+        expected: { r: 0, g: 0, b: 0, a: 255 },
+        actual: null,
+        sample: { x: 0, y: 0 },
+        detail: this.lastError,
+        durationMs: 0,
+      };
+      throw e;
+    }
   }
 
   layer(el: Element, opts: LayerOpts = {}): LayerHandle {
@@ -295,6 +322,7 @@ class HostImpl implements Host {
       cssSize: this.unitState.cssSize,
       unitScale: this.unitState.scale,
       layers: this.registry.all().map((l) => ({ id: l.id, dirty: l.dirty })),
+      admission: this.admission,
       metrics: {
         ...this.metrics,
         mutationsIgnored: this.mutations?.stats.ignored ?? this.metrics.mutationsIgnored,

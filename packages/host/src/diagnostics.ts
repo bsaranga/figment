@@ -1,5 +1,6 @@
 import type { HostBackend, HostState } from "./types.js";
 import type { Vec2 } from "./geometry.js";
+import type { PixelProbeResult } from "./admission.js";
 
 export interface Metrics {
   paints: number;
@@ -31,6 +32,7 @@ export function buildState(input: {
   cssSize: Vec2;
   unitScale: Vec2;
   layers: { id: string; dirty: boolean }[];
+  admission: PixelProbeResult | null;
   metrics: Metrics;
   lastError?: string;
 }): HostState {
@@ -42,6 +44,7 @@ export function buildState(input: {
     cssSize: input.cssSize,
     unitScale: input.unitScale,
     layers: input.layers,
+    admission: input.admission,
     metrics: { ...input.metrics },
   };
   if (input.lastError !== undefined) state.lastError = input.lastError;

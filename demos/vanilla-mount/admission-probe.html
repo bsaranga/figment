@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>figment — M2a pixel probe</title>
+  </head>
+  <body>
+    <pre id="out">running…</pre>
+    <script type="module">
+      import {
+        runPixelProbe,
+        assertPixelProbe,
+      } from "@figment/host";
+
+      window.__admission = { runPixelProbe, assertPixelProbe };
+
+      const out = document.getElementById("out");
+      try {
+        const r = await assertPixelProbe();
+        out.textContent = JSON.stringify(r, null, 2);
+        out.dataset.ok = "yes";
+      } catch (e) {
+        out.textContent = String(e);
+        out.dataset.ok = "no";
+      }
+    </script>
+  </body>
+</html>
