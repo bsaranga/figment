@@ -59,6 +59,37 @@ export function inspectSupport(canvas: HTMLCanvasElement): SupportReport {
   return { ok: missing.length === 0, missing, details };
 }
 
+/** M2h: backend-specific functional surface checks (presence + arity). */
+export function inspectBackendSupport(
+  canvas: HTMLCanvasElement,
+  backend: "2d" | "webgl" | "webgpu",
+): SupportReport {
+  const base = inspectSupport(canvas);
+  const missing = [...base.missing];
+  const details = { ...base.details };
+
+  if (backend === "webgl") {
+    const gl = canvas.getContext("webgl") as WebGLRenderingContext | null;
+    if (!gl) missing.push("WebGLRenderingContext");
+    else {
+      const tex = (gl as WebGLRenderingContext & { texElementSubImage2D?: unknown })
+        .texElementSubImage2D;
+      details.texElementSubImage2D = typeof tex === "function";
+      if (typeof tex !== "function") {
+        missing.push("WebGLRenderingContext.texElementSubImage2D");
+      }
+    }
+  }
+
+  if (backend === "webgpu") {
+    const gpu = (globalThis as { navigator?: { gpu?: unknown } }).navigator?.gpu;
+    details.navigatorGpu = !!gpu;
+    if (!gpu) missing.push("navigator.gpu");
+  }
+
+  return { ok: missing.length === 0, missing, details };
+}
+
 export function assertSupport(canvas: HTMLCanvasElement): SupportReport {
   const report = inspectSupport(canvas);
   if (!report.ok) {

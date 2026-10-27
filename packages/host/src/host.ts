@@ -3,7 +3,6 @@ import {
   FigmentUnsupportedError,
   PaintTimeoutError,
 } from "./errors.js";
-import { assertSupport } from "./support.js";
 import {
   markDrawable,
   markNestedCanvases,
@@ -21,6 +20,9 @@ import { attachUnits, type UnitBridge, type UnitState } from "./units.js";
 import { LayerRegistry, type LayerRecord } from "./layers.js";
 import { buildState, createMetrics, type Metrics } from "./diagnostics.js";
 import { drawLayers2D } from "./backend/2d.js";
+import { createWebGLBackend, type WebGLBackend } from "./backend/webgl.js";
+import { createWebGPUBackend, type WebGPUBackend } from "./backend/webgpu.js";
+import { assertSupport } from "./support.js";
 import { assertAdmission, type AdmissionReport } from "./admission.js";
 import { composeTiltMatrix, tiltToCss, toDOMMatrix, witnessTilt } from "./tilt.js";
 import type {
@@ -121,13 +123,12 @@ class HostImpl implements Host {
   private pendingCover: HTMLElement | null = null;
   private camera: Camera = defaultCamera();
 
+  private webgl: WebGLBackend | null = null;
+  private webgpu: WebGPUBackend | null = null;
+  private webgpuReady: Promise<void> | null = null;
+  private webgpuInitError: unknown = null;
+
   constructor(canvas: HTMLCanvasElement, options: CreateHostOptions) {
-    if (options.backend !== "2d") {
-      throw new FigmentUnsupportedError(
-        "missing-api",
-        `backend "${options.backend}" ships in M2. Use "2d" for M1.`,
-      );
-    }
     this.canvas = canvas;
     this.backend = options.backend;
     this.paintTimeoutMs = options.paintTimeoutMs ?? 2000;
@@ -136,11 +137,34 @@ class HostImpl implements Host {
     prepareCanvas(canvas);
     canvas.dataset.figmentHost = "1";
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      throw new FigmentUnsupportedError("missing-api", "2D context unavailable");
+    if (options.backend === "2d") {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new FigmentUnsupportedError("missing-api", "2D context unavailable");
+      }
+      this.ctx = ctx;
+    } else if (options.backend === "webgl") {
+      this.webgl = createWebGLBackend(canvas);
+      // WebGL replaces the 2D context; keep a dummy for typing.
+      this.ctx = canvas.getContext("2d") ?? ({} as CanvasRenderingContext2D);
+    } else {
+      // WebGPU configure is async — draw waits on webgpuReady.
+      this.ctx = canvas.getContext("2d") ?? ({} as CanvasRenderingContext2D);
+      this.webgpuReady = createWebGPUBackend(canvas)
+        .then((b) => {
+          this.webgpu = b;
+          this.requestPaint();
+        })
+        .catch((e) => {
+          this.health = "failed";
+          this.lastError = e instanceof Error ? e.message : String(e);
+          this.webgpuInitError = e;
+          // Wake any paintOnce waiters so they can observe the failure.
+          const waiting = this.pendingPaintOnce.splice(0);
+          for (const fn of waiting) fn();
+          throw e;
+        });
     }
-    this.ctx = ctx;
     this.registry = new LayerRegistry(options.budgets?.layers ?? 32);
 
     this.units = attachUnits(canvas, (u) => {
@@ -557,19 +581,31 @@ class HostImpl implements Host {
 
   paintOnce(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pendingPaintOnce = this.pendingPaintOnce.filter((fn) => fn !== done);
-        reject(new PaintTimeoutError(`paintOnce timed out after ${this.paintTimeoutMs}ms`));
-      }, this.paintTimeoutMs);
-
-      const done = () => {
-        clearTimeout(timer);
-        resolve();
-      };
-      this.pendingPaintOnce.push(done);
-      this.registry.markAllDirty();
-      this.requestPaint();
+      const run = () => this.schedulePaintOnce(resolve, reject);
+      if (this.backend === "webgpu" && this.webgpuReady && !this.webgpu) {
+        this.webgpuReady.then(run).catch((e) => reject(e));
+        return;
+      }
+      run();
     });
+  }
+
+  private schedulePaintOnce(
+    resolve: () => void,
+    reject: (e: unknown) => void,
+  ): void {
+    const timer = setTimeout(() => {
+      this.pendingPaintOnce = this.pendingPaintOnce.filter((fn) => fn !== done);
+      reject(new PaintTimeoutError(`paintOnce timed out after ${this.paintTimeoutMs}ms`));
+    }, this.paintTimeoutMs);
+
+    const done = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    this.pendingPaintOnce.push(done);
+    this.registry.markAllDirty();
+    this.requestPaint();
   }
 
   private flushPaint(force: boolean): void {
@@ -588,15 +624,42 @@ class HostImpl implements Host {
     }
 
     try {
-      this.ctx.reset();
-      const drawn = drawLayers2D({
-        ctx: this.ctx,
-        layers,
+      if (this.backend === "webgpu" && !this.webgpu) {
+        if (this.webgpuInitError) {
+          this.health = "failed";
+          this.lastError =
+            this.webgpuInitError instanceof Error
+              ? this.webgpuInitError.message
+              : String(this.webgpuInitError);
+          const waiting = this.pendingPaintOnce.splice(0);
+          for (const fn of waiting) fn();
+          return;
+        }
+        // Still configuring — try again once ready.
+        this.webgpuReady?.then(() => this.requestPaint()).catch(() => {});
+        return;
+      }
+      if (this.backend === "2d" && this.ctx.reset) this.ctx.reset();
+      const scene = {
         cssSize: this.unitState.cssSize,
         unitScale: this.unitState.scale,
         camera: this.camera,
-        onlyDirty: false,
-      });
+      };
+      let drawn = 0;
+      if (this.webgl) {
+        drawn = this.webgl.draw(layers, scene);
+      } else if (this.webgpu) {
+        drawn = this.webgpu.draw(layers, scene);
+      } else {
+        drawn = drawLayers2D({
+          ctx: this.ctx,
+          layers,
+          cssSize: this.unitState.cssSize,
+          unitScale: this.unitState.scale,
+          camera: this.camera,
+          onlyDirty: false,
+        });
+      }
       this.metrics.paints += 1;
       this.metrics.layersDrawn += drawn;
       this.metrics.dirtyRedraws += dirty.length;
@@ -663,6 +726,10 @@ class HostImpl implements Host {
     }
     this.registry.clear();
     this.units.stop();
+    this.webgl?.dispose();
+    this.webgl = null;
+    this.webgpu?.dispose();
+    this.webgpu = null;
     if (this.paintHandler) {
       this.canvas.removeEventListener("paint", this.paintHandler);
       this.paintHandler = null;
