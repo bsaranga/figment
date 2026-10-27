@@ -3,11 +3,7 @@
  * See ARCHITECTURE.md §4 and PLAN.md M3.
  */
 
-export type EffectDesc =
-  | { kind: "ripple"; amplitude: number; edge?: number }
-  | { kind: "chromatic"; offset: number }
-  | { kind: "dissolve"; progress: number }
-  | { kind: "custom"; id: string; params: Record<string, number> };
+export type { EffectDesc } from "./composite.js";
 
 export type MaterialDesc =
   | { kind: "relief"; bevel?: number; depth?: number }
@@ -23,3 +19,18 @@ export type MaterialDesc =
 export type InteractionMode = "decorative" | "inert" | "material";
 
 export const GPU_VERSION = "0.0.0";
+
+export {
+  MAX_EFFECT_OPS,
+  validateEffectChain,
+  buildEffectGlsl,
+  type EffectDesc as CompositeEffectDesc,
+  type CompositeBackend,
+  type CompositeFrameInput,
+  type CompositeLayerInput,
+} from "./composite.js";
+export {
+  createWebGLComposite,
+  createDirectComposite,
+  createWebGLComposite as createComposite,
+} from "./backend-webgl-composite.js";
