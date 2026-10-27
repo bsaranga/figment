@@ -570,9 +570,18 @@ class HostImpl implements Host {
  * Map a CSS-px clip rect (canvas space) onto the element as clip-path so
  * DOM hit-testing matches what we draw under canvasClip.
  */
+function cssOriginKeyword(origin: TransformOrigin): string {
+  if (origin === "top-left") return "top left";
+  if (origin === "center") return "center";
+  return `${(origin.x * 100).toFixed(4)}% ${(origin.y * 100).toFixed(4)}%`;
+}
+
 function applyElementClipPath(rec: LayerRecord): void {
   const el = rec.element;
   if (!(el instanceof HTMLElement)) return;
+
+  // M2e: keep DOM hit-testing on the same pivot as the GPU draw.
+  el.style.transformOrigin = cssOriginKeyword(rec.origin);
 
   if (!rec.clip) {
     el.style.clipPath = "";

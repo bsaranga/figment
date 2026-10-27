@@ -1,4 +1,5 @@
 import type { LayerRecord } from "../layers.js";
+import { resolveOrigin } from "../layers.js";
 import type { Vec2 } from "../geometry.js";
 
 export interface Draw2DOptions {
@@ -26,13 +27,11 @@ export function drawLayers2D(opts: Draw2DOptions): number {
     }
 
     const rect = el.getBoundingClientRect();
-    // dest size in canvas-grid px
-    const destW = layer.drawAt
-      ? undefined
-      : (rect.width || el.clientWidth) * unitScale.x;
-    const destH = layer.drawAt
-      ? undefined
-      : (rect.height || el.clientHeight) * unitScale.y;
+    const layoutW = rect.width || el.clientWidth;
+    const layoutH = rect.height || el.clientHeight;
+    // dest size in canvas-grid px (needed for the M2e pivot even with drawAt)
+    const destW = layoutW * unitScale.x;
+    const destH = layoutH * unitScale.y;
 
     const dx = layer.drawAt
       ? layer.drawAt.x
@@ -54,10 +53,11 @@ export function drawLayers2D(opts: Draw2DOptions): number {
       ctx.clip();
     }
 
-    // rotation about origin
+    // M2e: rotate/scale about the layer's transform origin (not hardcoded center).
     if (layer.transform.rotation !== 0 || layer.transform.scaleX !== 1 || layer.transform.scaleY !== 1) {
-      const originX = dx + (destW ?? 0) / 2;
-      const originY = dy + (destH ?? 0) / 2;
+      const pivot = resolveOrigin(layer.origin, { x: destW, y: destH });
+      const originX = dx + pivot.x;
+      const originY = dy + pivot.y;
       ctx.translate(originX, originY);
       ctx.rotate((layer.transform.rotation * Math.PI) / 180);
       ctx.scale(layer.transform.scaleX, layer.transform.scaleY);
@@ -69,12 +69,8 @@ export function drawLayers2D(opts: Draw2DOptions): number {
       drawElementImage: (el: Element, ...rest: number[]) => unknown;
     };
 
-    if (destW !== undefined && destH !== undefined && (destW !== rect.width * unitScale.x || destH !== rect.height * unitScale.y)) {
-      // explicit dest box
-      (ctx as Drawable2D).drawElementImage(el, dx, dy, destW, destH);
-    } else {
-      (ctx as Drawable2D).drawElementImage(el, dx, dy);
-    }
+    // drawElementImage draws the border box at (dx,dy) at natural size.
+    (ctx as Drawable2D).drawElementImage(el, dx, dy);
 
     ctx.restore();
     layer.dirty = false;
