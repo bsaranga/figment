@@ -1,0 +1,23 @@
+# figment
+
+**Full stack for canvas-native apps:** surface runtime + GPU framework (effects, materials, lights, tilt) + spatial UI kit. Real DOM from any front-end framework. Interactive and accessible. Chrome HTML-in-Canvas OT only — **no fallback**.
+
+## Status
+
+Research / proposal phase. See [PROPOSAL.md](./PROPOSAL.md) before any implementation.
+
+## Docs
+
+- [EXEC_SUMMARY.md](./EXEC_SUMMARY.md) — **start here** (plain-language product + architecture)
+- [PROPOSAL.md](./PROPOSAL.md) — thesis, validated API surface, competitor map, usefulness ranking, risks
+- [FEATURES.md](./FEATURES.md) — **competitive steal list** from Underglass + Prism (feature matrix, P0–P3, reject list)
+
+## Locked decisions
+
+- Tilt / projective panels: **in scope** (admission-probed)
+- Missing API: throw `FigmentUnsupportedError` — **no fallback**
+- Kit distribution: deferred
+
+## Constraint
+
+**No fallback.** Target HTML-in-Canvas only (Chrome Canary/Dev + origin trial). See PROPOSAL.md §4.3.
