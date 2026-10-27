@@ -142,7 +142,8 @@ Think in four layers:
 | **Correctness** | Nested `<canvas>` fix; functional “does it actually work?” probes on startup; no blank frames when layers change |
 | **Geometry** | Click/hit areas synced to drawn position; stacking order; clip regions; 2D auto-sync + explicit 3D sync |
 | **Units** | CSS pixels ↔ canvas pixels ↔ device pixels helpers (the #1 blur bug source) |
-| **3D** | Tilt (rotate X/Y with perspective), transform origin (pivot point), frame-edge policy |
+| **3D** | Tilt (rotate X/Y with perspective), **Z translate + shared camera**, transform origin, frame-edge policy |
+| **Scroll stories** | Scroll progress drives camera/layer Z — “scroll into screen” fly-throughs on real HTML |
 | **Compositing** | Transparent background so the page shows through; clean edge anti-aliasing |
 | **App integration** | Overlay host for native dialogs; scrollable regions; form/input carets keep working |
 | **Diagnostics** | `state()` — backend, health, counters |

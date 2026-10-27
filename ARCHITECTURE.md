@@ -94,6 +94,9 @@ interface Host {
   setOrigin(id: string, o: TransformOrigin): void;
   updateGeometry(id: string, g: { canvasTransform?: DOMMatrix; canvasClip?: DOMRect }): void;
   clearGeometry(id: string): void;
+  // scene camera (perspective + Z-space storytelling)
+  setCamera(c: Camera): void;
+  getCamera(): Camera;
   // units
   cssToCanvas(n: number): number;
   clientToCanvas(p: {x:number;y:number}): {x:number;y:number};
@@ -102,13 +105,49 @@ interface Host {
   destroy(): Promise<void>;
 }
 
+/** Layer transform in scene space. `z` is translate toward/away from the camera (CSS px at z=0). */
+interface Transform {
+  x: number;
+  y: number;
+  z?: number;                 // default 0 — enables scroll-into-screen depth
+  scaleX?: number;
+  scaleY?: number;
+  rotation?: number;          // deg, Z-roll
+  rotateX?: number;           // deg
+  rotateY?: number;           // deg
+  opacity?: number;
+}
+
+/** Shared scene camera. Scroll choreography writes `z` (and optional pitch/yaw) here. */
+interface Camera {
+  z: number;                  // camera distance along view axis; increasing = fly into the scene
+  perspective: number;        // px, CSS perspective equivalent (default 1200)
+  near?: number;              // clip plane; default derived from perspective
+  far?: number;
+  origin?: { x: number; y: number };  // vanishing point in canvas CSS px
+}
+
 interface LayerOpts {
   id?: string;
-  transform?: Transform;                   // x,y,scaleX,scaleY,rotation,opacity
-  tilt?: { x: number; y: number; perspective?: number };  // degrees, ±60
+  transform?: Transform;                   // x,y,z,scale,rotate*,opacity
+  tilt?: { x: number; y: number; perspective?: number };  // degrees, ±60 (per-layer; folds into transform)
   origin?: "top-left" | "center" | { x: number; y: number };
   clip?: DOMRect;
   decorative?: boolean;                    // inert content only
+  scrollTrack?: ScrollTrack;               // bind layer Z/X/Y/scale to scroll progress
+}
+
+/** Map document/container scroll progress → layer (or camera) channels. Scrubbed every frame. */
+interface ScrollTrack {
+  source: "window" | HTMLElement | "wheel";
+  axis?: "y" | "x";
+  /** progress 0..1 over the track range (start/end in px or element refs) */
+  range?: { start: number | HTMLElement; end: number | HTMLElement };
+  channels: Partial<Record<"cameraZ" | "z" | "y" | "x" | "scale" | "rotateX" | "rotateY" | "opacity",
+    { from: number; to: number; easing?: (t: number) => number }>>;
+  /** pin the stage while the track is active (classic scroll-into-screen) */
+  pin?: boolean;
+  reducedMotion?: "jump-end" | "static";   // prefers-reduced-motion behavior
 }
 ```
 
@@ -125,6 +164,8 @@ interface LayerOpts {
 | `layers.ts` | registry, membership, complete-frame gating, budgets |
 | `geometry.ts` | canonical affine/projective matrix → hits + draw + DOM; hit stack (`preserveHitTestOrder`); `clearElementGeometry` on retire |
 | `tilt.ts` | projective matrix, corner-in-front-of-viewer check, frame-edge policy, admission witness |
+| `camera.ts` | shared scene camera (perspective, near/far, vanishing point); world→canvas matrix composed with each layer |
+| `scroll.ts` | scroll/wheel → progress; `ScrollTrack` scrub; pin stage; reduced-motion policy; coalesce with rAF |
 | `units.ts` | CSS ↔ canvas grid ↔ device px; ResizeObserver + `devicePixelContentBoxSize` |
 | `composite.ts` | backend draw (2D `drawElementImage` / WebGL `texElementSubImage2D` / WebGPU `drawElementImageToTexture`); transparent clear; bilinear premultiplied + analytic AA |
 | `overlays.ts` | NativeOverlay-style portal host; NativeScroll invalidation |
@@ -133,11 +174,13 @@ interface LayerOpts {
 
 ### 3.3 Critical invariants
 
-1. **One canonical matrix per layer** drives drawing, `updateElementGeometry`, and DOM (`matrix3d` when tilted). Never let them diverge.
-2. **No incomplete frames** — membership changes wait for valid captures; keep last good output.
-3. **Seamless first enable** — probe with `opacity:0; pointer-events:none`, swap only when complete.
-4. **Never property-sniff** — functional probes decide admission.
-5. **No fallback** — missing/failed capability ⇒ `FigmentUnsupportedError`, never placeholders.
+1. **One canonical matrix per layer** drives drawing, `updateElementGeometry`, and DOM (`matrix3d` when tilted or Z-offset). Never let they diverge.
+2. **Camera is shared** — layer `z` is scene-space; projection (perspective + `camera.z`) is applied once at composite/draw. DOM `matrix3d` updates only when hit-testing/layout needs it.
+3. **Scroll scrub is not scroll-jacking** — native scroll remains source of truth; we *derive* camera/layer channels from progress and honor `prefers-reduced-motion`.
+4. **No incomplete frames** — membership changes wait for valid captures; keep last good output.
+5. **Seamless first enable** — probe with `opacity:0; pointer-events:none`, swap only when complete.
+6. **Never property-sniff** — functional probes decide admission.
+7. **No fallback** — missing/failed capability ⇒ `FigmentUnsupportedError`, never placeholders.
 
 ---
 
@@ -178,6 +221,10 @@ host.gpu.setEmitters(layerId, Emitter[]);      // lamps/LEDs/pointer light
 host.gpu.transition(layerId, MotionDesc): MotionHandle;
 host.gpu.transitionGroup(items, staggerMs): MotionHandle[];
 host.gpu.presence(el, { present: boolean; enter?: MotionDesc; exit?: MotionDesc });
+
+// scroll → Z choreography (story sites, fly-throughs)
+host.gpu.scrollTrack(target: LayerId | "camera", track: ScrollTrack): ScrollTrackHandle;
+// MotionDesc channels now include z / cameraZ / rotateX / rotateY
 ```
 
 ### 4.2 Interaction contracts (safety)
@@ -200,6 +247,7 @@ Enforced at `setEffect`/`setMaterial` time and re-checked on mutation.
 | `materials/{objects,instrument}.ts` | staged (M5+) |
 | `emitters.ts` | lights, pointer light, protected rects |
 | `motion/{transition,group,presence}.ts` | numeric keyframes, stagger, enter/exit |
+| `motion/scroll-track.ts` | bind scroll progress → cameraZ/z/tilt/scale/opacity; pin; reduced-motion |
 | `composite.ts` | per-layer pass, shader budget (≤3 ops), AA |
 | `glTF/` | staged ornament loading (M5+) |
 
@@ -214,7 +262,8 @@ Web Components + CSS custom-property tokens. No framework required. Each compone
 | Cluster | Element | Notes |
 |---|---|---|
 | **Spatial shell** | `<figment-infinite-canvas>` | pan/zoom world, layer transform space |
-| | `<figment-spatial-panel>` | movable/tiltable panel; relief/glass presets |
+| | `<figment-z-scroll>` | **scroll-into-screen stage**: pinned viewport, scroll progress → camera Z (or layer Z tracks) |
+| | `<figment-spatial-panel>` | movable/tiltable panel; relief/glass presets; `z` in scene space |
 | | `<figment-layer-stack>` | z/depth ordering of panels |
 | | `<figment-minimap>` | world overview |
 | **Product chrome** | `<figment-command-palette>` | ⌘K; glass material preset |

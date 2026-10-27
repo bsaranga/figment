@@ -8,6 +8,7 @@ Research / proposal phase. See [PROPOSAL.md](./PROPOSAL.md) before any implement
 
 ## Docs
 
+- [GOALS.md](./GOALS.md) — **north star**: cool capabilities, hero demos, Awwwards craft bar, success criteria
 - [EXEC_SUMMARY.md](./EXEC_SUMMARY.md) — **start here** (plain-language product + architecture)
 - [ACTIVATION.md](./ACTIVATION.md) — **Chrome flags / Origin Trial + known shortcomings**
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — packages, APIs, modules, data flow, error model
@@ -18,6 +19,7 @@ Research / proposal phase. See [PROPOSAL.md](./PROPOSAL.md) before any implement
 ## Locked decisions
 
 - Tilt / projective panels: **in scope** (admission-probed)
+- Scroll-into-screen Z-space (`transform.z` + shared camera + `scrollTrack`): **required** — teams must be able to build depth story sites
 - Missing API: throw `FigmentUnsupportedError` — **no fallback**
 - Kit distribution: deferred
 

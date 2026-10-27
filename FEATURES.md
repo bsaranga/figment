@@ -53,6 +53,8 @@ Goal: absorb every proven host/runtime technique from Underglass + Prism, reject
 | `clearElementGeometry` on unmount/retire | ✅ | ✅ dispose | 🎯 |
 | Transform origin / pivot (`top-left`/`center`/`{x,y}`) | ✅ | ❌ | 🎯 |
 | Projective tilt (`tiltX`/`tiltY`/`perspective`) + admission proof | ✅ | ❌ | 🎯 **IN SCOPE** (admission-gated) |
+| `transform.z` + shared scene camera (fly-through depth) | 🧪 (tilt only) | ❌ | 🎯 **required for scroll-into-screen** |
+| Scroll → Z scrub (`scrollTrack` / pin stage) | ❌ | ❌ | 🎯 **product differentiator** (Awwwards story sites) |
 | `canvasClip` for clipped viewports | ✅ | ❌ | 🎯 |
 | CSS↔canvas↔device px helpers | ✅ internal | ✅ **public helpers** | 🎯 steal Prism's public API |
 | Frame-edge rotated layer policy | ✅ | ❌ | 🎯 |
@@ -160,6 +162,7 @@ Goal: absorb every proven host/runtime technique from Underglass + Prism, reject
 
 16. **`NativeOverlay`-style portal host** — dialogs/popovers stay native, outside capture.
 17. **`NativeScroll`** — scroll containers refresh captures without revoking GPU.
+17b. **Scroll-into-screen Z-space** — shared camera + `transform.z` + `scrollTrack` scrub (pin stage). Must ship so teams can build Apple/Awwwards depth story sites with live HTML.
 18. **Declarative `transition` / `transitionGroup` / `Presence`.**
 19. **`paintOnce()` export readiness.** *(Prism)*
 20. **`state()` / diagnostics** — backend kind, health `idle|pending|healthy|failed`, counters.

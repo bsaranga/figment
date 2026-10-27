@@ -12,9 +12,9 @@
 |---|---|---|---|
 | **M0** | Tooling & repo | monorepo builds, tests run, CI green, Canary harness | — |
 | **M1** | Surface runtime core | mount any DOM → 2D canvas, paint, hit-test, units | M0 |
-| **M2** | Admission + geometry depth | functional probes, hit stack, tilt/projective layers | M1 |
-| **M3** | GPU framework | effects, materials, emitters, motion, `defineEffect` | M2 |
-| **M4** | UI kit — shell + chrome | InfiniteCanvas, SpatialPanel, CommandPalette, Modal, Toast | M2 (M3 for presets) |
+| **M2** | Admission + geometry depth | functional probes, hit stack, tilt/projective layers, camera + transform.z | M1 |
+| **M3** | GPU framework | effects, materials, emitters, motion + scroll→Z tracks, `defineEffect` | M2 |
+| **M4** | UI kit — shell + chrome | InfiniteCanvas, **ZScroll story stage**, SpatialPanel, CommandPalette, Modal, Toast | M2 (M3 for presets) |
 | **M5** | Kit expansion + export | VirtualList, HUD, forms, `paintOnce`, verticals | M3, M4 |
 | **M6** | Framework bindings + DX | react/vue/svelte, agent skill, docs | M4 |
 
@@ -67,11 +67,13 @@ graph TD
     M2e[transform origin pivot]
     M2f[tilt projective matrix]
     M2g[tilt admission witness]
+    M2j[camera + transform z]
     M2h[WebGL + WebGPU backends]
     M2i[transparent clear + AA]
     M2a --> M2b --> M2c
     M2c --> M2d --> M2e
     M2e --> M2f --> M2g
+    M2f --> M2j
     M2d --> M2h
     M2h --> M2i
   end
@@ -87,12 +89,14 @@ graph TD
     M3h[protected text rects]
     M3i[motion transition + group]
     M3j[presence enter/exit]
+    M3l[scrollTrack Z scrub]
     M3k[interaction contracts]
     M3a --> M3b --> M3k
     M3a --> M3d --> M3e --> M3f
     M3b --> M3c
     M3f --> M3g --> M3h
     M3i --> M3j --> M3k
+    M3i --> M3l --> M3k
   end
 
   subgraph M4 [M4 · UI kit shell + chrome]
@@ -223,10 +227,11 @@ M6a → M6d;  M6b → M6d;  M6c → M6d
 | M2e | Transform origin / pivot | S | rotate about `center` works |
 | M2f | Tilt: projective matrix (tiltX/tiltY/perspective) | L | tilted panel draws correctly |
 | M2g | Tilt admission witness (refuse mode if hit-test wrong) | M | `tilt-unsupported` throws when probe fails |
+| M2j | Scene camera + `transform.z` (shared perspective, near/far clip) | L | panels at different `z` project + hit correctly while `camera.z` moves |
 | M2h | WebGL + WebGPU backends (pre-alloc, dict APIs) | L | same scene on all 3 backends |
 | M2i | Transparent clear + bilinear premultiplied + analytic AA | M | no edge fringes when rotated |
 
-**M2 exit:** tilted panels with correct clicks on 2D/WebGL/WebGPU; fail-fast when browser can't.
+**M2 exit:** tilted **and Z-offset** panels with correct clicks on 2D/WebGL/WebGPU; camera can fly along Z; fail-fast when browser can't.
 
 ### M3 — GPU framework
 
@@ -242,22 +247,25 @@ M6a → M6d;  M6b → M6d;  M6c → M6d
 | M3h | Protected text rects | M | copy never illegible under light |
 | M3i | Motion: `transition`, `transitionGroup` + stagger | M | keyed layer motion |
 | M3j | `presence` enter/exit | M | toast dissolve uses it |
+| M3l | `scrollTrack`: scroll progress → cameraZ/z/tilt/scale/opacity; pin; reduced-motion | L | scroll flies HTML panels through Z (scrub, not jank) |
 | M3k | Interaction contracts (`decorative`/`inert`/`material`) | M | violations throw; live controls only relit |
 
-**M3 exit:** layers can wear glass/relief and run effects safely.
+**M3 exit:** layers can wear glass/relief, run effects safely, and **scroll-into-screen Z stories** scrub correctly.
 
 ### M4 — UI kit (shell + chrome)
 
 | ID | Task | Size | Done when |
 |---|---|---|---|
 | M4a | Design tokens (`--figment-*`) | S | themable in DOM + canvas |
-| M4b | `<figment-spatial-panel>` (move/tilt, material presets) | M | draggable tiltable panel |
+| M4b | `<figment-spatial-panel>` (move/tilt/**z**, material presets) | M | draggable tiltable panel in scene depth |
+| M4b2 | `<figment-z-scroll>` story stage (pinned viewport + scroll tracks) | L | Awwwards-style Z fly-through of real HTML |
 | M4c | `<figment-infinite-canvas>` (pan/zoom world space) | L | infinite board with panels |
 | M4d | `<figment-layer-stack>` + `<figment-minimap>` | M | depth order + overview |
 | M4e | `<figment-command-palette>` (glass preset, ⌘K) | M | usable palette on canvas |
 | M4f | `<figment-modal>` + `<figment-toast>` (dissolve) | M | focus trap + presence exit |
 | M4g | `<figment-context-menu>` + `<figment-tooltip>` | M | 3D-aware placement |
 | M4h | `demos/spatial-shell` | M | Figma-like board demo |
+| M4h2 | `demos/z-scroll-story` | M | scroll-into-screen demo: panels approach camera, stay clickable + AT |
 | M4i | `demos/glass-palette` | S | palette + glass showcase |
 
 **M4 exit:** a stranger can build a spatial tool UI from the kit.
@@ -307,6 +315,8 @@ M6a → M6d;  M6b → M6d;  M6c → M6d
 |---|---|
 | API churn in OT | M1a centralizes detection; browser matrix in M0c |
 | Tilt hit-test bugs | M2g refuses mode; documented in errors |
+| Scroll-Z jank / scroll-jacking feel | M3l derives from native scroll only; rAF-coalesced; reduced-motion policy |
+| Z hit-test / near-plane flicker | M2j admission witness for Z projection; clip at near plane, not drop layer |
 | Nested canvas blank capture | M1c ships the known workaround first |
 | Perf on canvas lists | M5a virtualization is explicit scope |
 | Framework drift | M6d interop matrix is a gate, not optional |
