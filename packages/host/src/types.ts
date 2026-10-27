@@ -1,5 +1,5 @@
 import type { Vec2 } from "./geometry.js";
-import type { PixelProbeResult } from "./admission.js";
+import type { AdmissionReport } from "./admission.js";
 
 export type HostBackend = "2d" | "webgl" | "webgpu";
 
@@ -64,8 +64,8 @@ export interface HostState {
   cssSize: Vec2;
   unitScale: Vec2;
   layers: { id: string; dirty: boolean }[];
-  /** M2a functional pixel probe; null until `host.admit()` runs. */
-  admission: PixelProbeResult | null;
+  /** M2a+M2b functional admission (pixel + hit); null until `host.admit()` runs. */
+  admission: AdmissionReport | null;
   metrics: {
     paints: number;
     layersDrawn: number;
@@ -82,10 +82,10 @@ export interface Host {
   mount(root: ParentNode): () => void;
   layer(el: Element, opts?: LayerOpts): LayerHandle;
   /**
-   * M2a: functional pixel probe (known-color draw + readback).
+   * M2a+M2b: functional admission (pixel readback + elementFromPoint hit probe).
    * Throws {@link FigmentUnsupportedError} `probe-failed` — no fallback.
    */
-  admit(): Promise<PixelProbeResult>;
+  admit(): Promise<AdmissionReport>;
   requestPaint(): void;
   invalidate(layer?: LayerHandle): void;
   paintOnce(): Promise<void>;

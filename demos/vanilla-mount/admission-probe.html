@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>figment — M2a pixel probe</title>
+    <title>figment — M2 admission probes</title>
   </head>
   <body>
     <pre id="out">running…</pre>
@@ -10,13 +10,22 @@
       import {
         runPixelProbe,
         assertPixelProbe,
+        runHitProbe,
+        assertHitProbe,
+        assertAdmission,
       } from "@figment/host";
 
-      window.__admission = { runPixelProbe, assertPixelProbe };
+      window.__admission = {
+        runPixelProbe,
+        assertPixelProbe,
+        runHitProbe,
+        assertHitProbe,
+        assertAdmission,
+      };
 
       const out = document.getElementById("out");
       try {
-        const r = await assertPixelProbe();
+        const r = await assertAdmission();
         out.textContent = JSON.stringify(r, null, 2);
         out.dataset.ok = "yes";
       } catch (e) {

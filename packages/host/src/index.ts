@@ -47,11 +47,20 @@ export { SIDE_EFFECT_ATTRIBUTES } from "./mutations.js";
 export {
   runPixelProbe,
   assertPixelProbe,
+  runHitProbe,
+  assertHitProbe,
+  runAdmission,
+  assertAdmission,
   parseHexColor,
   colorMatches,
   PROBE_COLOR,
+  HIT_PROBE_ID,
   type PixelProbeResult,
   type PixelProbeOptions,
+  type HitProbeResult,
+  type HitProbeOptions,
+  type HitSample,
+  type AdmissionReport,
   type Rgb,
 } from "./admission.js";
 

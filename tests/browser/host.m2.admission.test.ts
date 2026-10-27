@@ -35,10 +35,11 @@ test.describe("M2a pixel probe", () => {
       return { result, state: window.__figment.host.state().admission };
     });
 
-    expect(admission.result.ok).toBe(true);
-    expect(admission.result.detail).toMatch(/pixel probe ok/i);
-    expect(admission.state?.ok).toBe(true);
-    expect(admission.state?.detail).toMatch(/pixel probe ok/i);
+    expect(admission.result.pixel.ok).toBe(true);
+    expect(admission.result.pixel.detail).toMatch(/pixel probe ok/i);
+    expect(admission.result.hit.ok).toBe(true);
+    expect(admission.state?.pixel.ok).toBe(true);
+    expect(admission.state?.hit.ok).toBe(true);
   });
 
   test("react host.admit() matches vanilla proof", async ({ page }) => {
@@ -49,6 +50,7 @@ test.describe("M2a pixel probe", () => {
       await window.__figment.host.admit();
       return window.__figment.host.state().admission;
     });
-    expect(admission?.ok).toBe(true);
+    expect(admission?.pixel.ok).toBe(true);
+    expect(admission?.hit.ok).toBe(true);
   });
 });

@@ -21,7 +21,7 @@ import { attachUnits, type UnitBridge, type UnitState } from "./units.js";
 import { LayerRegistry, type LayerRecord } from "./layers.js";
 import { buildState, createMetrics, type Metrics } from "./diagnostics.js";
 import { drawLayers2D } from "./backend/2d.js";
-import { assertPixelProbe, type PixelProbeResult } from "./admission.js";
+import { assertAdmission, type AdmissionReport } from "./admission.js";
 import type {
   CreateHostOptions,
   Host,
@@ -83,7 +83,7 @@ class HostImpl implements Host {
   private lastError: string | undefined;
   private pendingPaintOnce: (() => void)[] = [];
   private mountRoot: ParentNode | null = null;
-  private admission: PixelProbeResult | null = null;
+  private admission: AdmissionReport | null = null;
 
   constructor(canvas: HTMLCanvasElement, options: CreateHostOptions) {
     if (options.backend !== "2d") {
@@ -174,27 +174,19 @@ class HostImpl implements Host {
     this.requestPaint();
   }
 
-  async admit(): Promise<PixelProbeResult> {
+  async admit(): Promise<AdmissionReport> {
     if (this.destroyed) throw new EnrollmentError("host destroyed");
     this.health = "pending";
     try {
-      const result = await assertPixelProbe();
-      this.admission = result;
+      const report = await assertAdmission();
+      this.admission = report;
       this.health = "healthy";
       this.lastError = undefined;
-      return result;
+      return report;
     } catch (e) {
       this.health = "failed";
       this.lastError = e instanceof Error ? e.message : String(e);
-      this.admission = {
-        ok: false,
-        expectedHex: "#000000",
-        expected: { r: 0, g: 0, b: 0, a: 255 },
-        actual: null,
-        sample: { x: 0, y: 0 },
-        detail: this.lastError,
-        durationMs: 0,
-      };
+      // Keep any partial proof we already recorded via runAdmission path.
       throw e;
     }
   }
