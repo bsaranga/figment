@@ -28,3 +28,16 @@ export const KIT_ELEMENTS = [
 ] as const;
 
 export type KitElementName = (typeof KIT_ELEMENTS)[number];
+
+export {
+  DEFAULT_TOKENS,
+  resolveTokens,
+  tokensToCss,
+  tokenVar,
+  applyTokens,
+  getToken,
+  installTokenStyles,
+  type FigmentTokens,
+  type PartialTokens,
+  type TokenGroup,
+} from "./tokens.js";
