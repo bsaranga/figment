@@ -1,12 +1,15 @@
 import type { LayerRecord } from "../layers.js";
 import { resolveOrigin } from "../layers.js";
 import type { Vec2 } from "../geometry.js";
+import type { Camera } from "../camera.js";
+import { clipReason, depthScale, viewZ } from "../camera.js";
 
 export interface Draw2DOptions {
   ctx: CanvasRenderingContext2D;
   layers: LayerRecord[];
   cssSize: Vec2;
   unitScale: Vec2;
+  camera: Camera;
   /** When true, skip layers that are not dirty (caller must clear damaged regions). */
   onlyDirty: boolean;
 }
@@ -16,11 +19,21 @@ export interface Draw2DOptions {
  * Geometry: 2D auto-syncs hits when preserveElementGeometry is false (default).
  */
 export function drawLayers2D(opts: Draw2DOptions): number {
-  const { ctx, layers, cssSize, unitScale, onlyDirty } = opts;
+  const { ctx, layers, cssSize, unitScale, onlyDirty, camera } = opts;
   let drawn = 0;
+  const origin = camera.origin ?? {
+    x: cssSize.x / 2,
+    y: cssSize.y / 2,
+  };
 
   for (const layer of layers) {
     if (onlyDirty && !layer.dirty) continue;
+    // M2j: near/far clip — do not draw off-frustum layers.
+    const vz = viewZ(layer.transform.z, camera);
+    if (clipReason(vz, camera) !== "front") {
+      layer.dirty = false;
+      continue;
+    }
     const el = layer.element;
     if (!(el instanceof HTMLElement) && !(el instanceof SVGElement)) {
       continue;
@@ -53,11 +66,23 @@ export function drawLayers2D(opts: Draw2DOptions): number {
       ctx.clip();
     }
 
-    // M2e: rotate/scale about the layer's transform origin (not hardcoded center).
-    if (layer.transform.rotation !== 0 || layer.transform.scaleX !== 1 || layer.transform.scaleY !== 1) {
+    // M2e + M2j: pivot transform then depth scale about the vanishing point.
+    const needsPivot =
+      layer.transform.rotation !== 0 ||
+      layer.transform.scaleX !== 1 ||
+      layer.transform.scaleY !== 1;
+    const zs = depthScale(vz, camera.perspective) ?? 1;
+    const needsDepth = Math.abs(zs - 1) > 1e-6;
+
+    if (needsPivot || needsDepth) {
       const pivot = resolveOrigin(layer.origin, { x: destW, y: destH });
       const originX = dx + pivot.x;
       const originY = dy + pivot.y;
+      // Depth scale about the scene vanishing point (camera.origin).
+      ctx.translate(origin.x * unitScale.x, origin.y * unitScale.y);
+      ctx.scale(zs, zs);
+      ctx.translate(-origin.x * unitScale.x, -origin.y * unitScale.y);
+      // Pivot rotate/scale.
       ctx.translate(originX, originY);
       ctx.rotate((layer.transform.rotation * Math.PI) / 180);
       ctx.scale(layer.transform.scaleX, layer.transform.scaleY);

@@ -84,3 +84,19 @@ export {
   type TiltWitnessResult,
   type TiltWitnessSample,
 } from "./tilt.js";
+
+export {
+  defaultCamera,
+  depthScale,
+  viewZ,
+  clipReason,
+  isVisible,
+  projectPoint,
+  layerCssTransform3D,
+  resolveNear,
+  resolveFar,
+  viewDistance,
+  DEFAULT_PERSPECTIVE as CAMERA_DEFAULT_PERSPECTIVE,
+  type Camera,
+  type ClipReason,
+} from "./camera.js";

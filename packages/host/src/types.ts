@@ -1,5 +1,6 @@
 import type { Vec2 } from "./geometry.js";
 import type { AdmissionReport } from "./admission.js";
+import type { Camera } from "./camera.js";
 
 export type HostBackend = "2d" | "webgl" | "webgpu";
 
@@ -22,10 +23,16 @@ export type TransformOrigin =
 export interface LayerTransform {
   x: number;
   y: number;
+  /** Scene-space depth (CSS px). Positive = toward the viewer. */
+  z: number;
   scaleX: number;
   scaleY: number;
   /** Degrees, clockwise. */
   rotation: number;
+  /** Degrees about X (projective tilt fold-in). */
+  rotateX: number;
+  /** Degrees about Y (projective tilt fold-in). */
+  rotateY: number;
   opacity: number;
 }
 
@@ -122,6 +129,9 @@ export interface Host {
   updateGeometry(id: string, g: GeometryUpdate): void;
   /** M2d: drop browser hit/a11y geometry for a layer (on retire). */
   clearGeometry(id: string): void;
+  /** M2j: shared scene camera (perspective, near/far, vanishing point). */
+  setCamera(c: Camera): void;
+  getCamera(): Camera;
   cssToCanvas(n: number, axis?: "x" | "y"): number;
   canvasToCss(n: number, axis?: "x" | "y"): number;
   clientToCanvas(p: Vec2): Vec2;
@@ -132,8 +142,13 @@ export interface Host {
 export const DEFAULT_TRANSFORM: LayerTransform = {
   x: 0,
   y: 0,
+  z: 0,
   scaleX: 1,
   scaleY: 1,
   rotation: 0,
+  rotateX: 0,
+  rotateY: 0,
   opacity: 1,
 };
+
+export type { Camera } from "./camera.js";

@@ -34,6 +34,11 @@ import type {
   TransformOrigin,
 } from "./types.js";
 import type { Vec2 } from "./geometry.js";
+import {
+  defaultCamera,
+  layerCssTransform3D,
+  type Camera,
+} from "./camera.js";
 
 class LayerHandleImpl implements LayerHandle {
   constructor(
@@ -46,12 +51,15 @@ class LayerHandleImpl implements LayerHandle {
   setTransform(t: Partial<LayerTransform>): void {
     Object.assign(this.record.transform, t);
     this.record.dirty = true;
+    this.host.refreshLayerCss(this.record);
+    this.host.syncLayerGeometry(this.record);
     this.host.requestPaint();
   }
 
   setOrigin(o: TransformOrigin): void {
     this.record.origin = o;
     this.record.dirty = true;
+    this.host.refreshLayerCss(this.record);
     this.host.syncLayerGeometry(this.record);
     this.host.requestPaint();
   }
@@ -111,6 +119,7 @@ class HostImpl implements Host {
   private pendingEnable = true;
   private savedPointerEvents = "";
   private pendingCover: HTMLElement | null = null;
+  private camera: Camera = defaultCamera();
 
   constructor(canvas: HTMLCanvasElement, options: CreateHostOptions) {
     if (options.backend !== "2d") {
@@ -326,7 +335,8 @@ class HostImpl implements Host {
       record.nestedMarks = markNestedCanvases(el);
       this.metrics.nestedCanvasMarks += record.nestedMarks.length;
     }
-    // Pin hit order + clip + tilt CSS to the browser stack before the witness.
+    // Pin hit order + clip + tilt/Z CSS to the browser stack before the witness.
+    this.refreshLayerCss(record);
     this.syncLayerGeometry(record);
     // One paint so the browser has a paint record + live geometry for hits.
     this.flushPaint(true);
@@ -389,6 +399,17 @@ class HostImpl implements Host {
     restoreNestedMarks(rec.nestedMarks);
     this.registry.markAllDirty();
     this.requestPaint();
+  }
+
+  refreshLayerCss(rec: LayerRecord): void {
+    if (rec.element instanceof HTMLElement) {
+      applyLayerCssTransform(
+        rec.element,
+        rec,
+        this.camera.perspective,
+        this.camera.z,
+      );
+    }
   }
 
   updateGeometry(id: string, g: GeometryUpdate): void {
@@ -520,6 +541,20 @@ class HostImpl implements Host {
     this.requestPaint();
   }
 
+  setCamera(c: Camera): void {
+    this.camera = { ...c };
+    this.registry.markAllDirty();
+    for (const layer of this.registry.all()) {
+      applyElementTilt(layer, this.camera.perspective, this.camera.z);
+      this.syncLayerGeometry(layer);
+    }
+    this.requestPaint();
+  }
+
+  getCamera(): Camera {
+    return { ...this.camera };
+  }
+
   paintOnce(): Promise<void> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -559,6 +594,7 @@ class HostImpl implements Host {
         layers,
         cssSize: this.unitState.cssSize,
         unitScale: this.unitState.scale,
+        camera: this.camera,
         onlyDirty: false,
       });
       this.metrics.paints += 1;
@@ -644,25 +680,68 @@ class HostImpl implements Host {
  * Map a CSS-px clip rect (canvas space) onto the element as clip-path so
  * DOM hit-testing matches what we draw under canvasClip.
  */
-function applyElementTilt(rec: LayerRecord): void {
+function applyElementTilt(
+  rec: LayerRecord,
+  perspective = 1200,
+  cameraZ = 0,
+): void {
   const el = rec.element;
   if (!(el instanceof HTMLElement)) return;
-  if (!rec.tilt || (rec.tilt.x === 0 && rec.tilt.y === 0)) {
-    // Keep other transforms (if any) but drop tilt-only perspective.
-    if (el.dataset.figmentTilt === "1") {
+  applyLayerCssTransform(el, rec, perspective, cameraZ);
+}
+
+function applyLayerCssTransform(
+  el: HTMLElement,
+  rec: LayerRecord,
+  perspective = 1200,
+  cameraZ = 0,
+): void {
+  el.style.transformOrigin = cssOriginKeyword(rec.origin);
+
+  const hasTilt = !!rec.tilt && (rec.tilt.x !== 0 || rec.tilt.y !== 0);
+  const hasZ = rec.transform.z !== 0;
+  const hasRot =
+    rec.transform.rotation !== 0 ||
+    rec.transform.scaleX !== 1 ||
+    rec.transform.scaleY !== 1 ||
+    rec.transform.rotateX !== 0 ||
+    rec.transform.rotateY !== 0;
+
+  if (!hasTilt && !hasZ && !hasRot) {
+    if (el.dataset.figmentTilt === "1" || el.dataset.figmentZ === "1") {
       el.style.transform = "";
       el.style.perspective = "";
       delete el.dataset.figmentTilt;
+      delete el.dataset.figmentZ;
     }
     return;
   }
-  const originX =
-    rec.origin === "center" ? 0.5 : rec.origin === "top-left" ? 0 : rec.origin.x;
-  const originY =
-    rec.origin === "center" ? 0.5 : rec.origin === "top-left" ? 0 : rec.origin.y;
-  el.style.transformOrigin = cssOriginKeyword(rec.origin);
-  el.style.transform = tiltToCss(rec.tilt, originX, originY);
-  el.dataset.figmentTilt = "1";
+
+  if (hasTilt && rec.tilt) {
+    const originX =
+      rec.origin === "center" ? 0.5 : rec.origin === "top-left" ? 0 : rec.origin.x;
+    const originY =
+      rec.origin === "center" ? 0.5 : rec.origin === "top-left" ? 0 : rec.origin.y;
+    el.style.transform = tiltToCss(rec.tilt, originX, originY);
+    el.dataset.figmentTilt = "1";
+    return;
+  }
+
+  // M2j: scene-space translate3d (parent/canvas supplies perspective via camera).
+  el.style.transform = layerCssTransform3D({
+    x: rec.transform.x,
+    y: rec.transform.y,
+    z: rec.transform.z,
+    scaleX: rec.transform.scaleX,
+    scaleY: rec.transform.scaleY,
+    rotation: rec.transform.rotation,
+    rotateX: rec.transform.rotateX,
+    rotateY: rec.transform.rotateY,
+    opacity: rec.transform.opacity,
+    perspective,
+    cameraZ,
+  });
+  el.dataset.figmentZ = "1";
 }
 
 function cssOriginKeyword(origin: TransformOrigin): string {
