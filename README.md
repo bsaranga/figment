@@ -9,6 +9,8 @@ Research / proposal phase. See [PROPOSAL.md](./PROPOSAL.md) before any implement
 ## Docs
 
 - [EXEC_SUMMARY.md](./EXEC_SUMMARY.md) — **start here** (plain-language product + architecture)
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — packages, APIs, modules, data flow, error model
+- [PLAN.md](./PLAN.md) — **milestones, task breakdown, TODO-graph**
 - [PROPOSAL.md](./PROPOSAL.md) — thesis, validated API surface, competitor map, usefulness ranking, risks
 - [FEATURES.md](./FEATURES.md) — **competitive steal list** from Underglass + Prism (feature matrix, P0–P3, reject list)
 
