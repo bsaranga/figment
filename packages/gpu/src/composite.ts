@@ -23,6 +23,20 @@ export interface CompositeLayerInput {
   height: number;
   opacity?: number;
   effects?: EffectDesc[];
+  /**
+   * M3g lights — relight without recapture (uniforms only).
+   * Positions in layer UV space (0..1).
+   */
+  emitters?: {
+    id: string;
+    x: number;
+    y: number;
+    r: number;
+    g: number;
+    b: number;
+    intensity?: number;
+    radius?: number;
+  }[];
   /** M3d+ persistent materials. */
   material?:
     | { kind: "relief"; bevel?: number; depth?: number }

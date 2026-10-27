@@ -30,6 +30,11 @@ import {
   resolveGlass,
   glassCallGlsl,
 } from "./materials/glass.js";
+import {
+  EMITTER_GLSL,
+  lightUniformGlsl,
+  resolveEmitters,
+} from "./emitters.js";
 import { FigmentUnsupportedError } from "@figment/host";
 
 type TexElementSubImage2D = (
@@ -56,6 +61,7 @@ void main() {
 function fragmentSrc(
   effects: EffectDesc[],
   material?: CompositeLayerInput["material"],
+  emitters?: CompositeLayerInput["emitters"],
 ): string {
   const chain = validateEffectChain(effects);
   // Stage 1: UV warps (ripple). Stage 2: resample (chromatic/dissolve/ripple).
@@ -93,6 +99,8 @@ function fragmentSrc(
     materialOp = glassCallGlsl(resolveGlass(material));
   }
 
+  const lightOp = lightUniformGlsl(resolveEmitters(emitters ?? []));
+
   return `
 precision mediump float;
 varying vec2 v_uv;
@@ -102,6 +110,7 @@ ${EFFECT_GLSL_LIB}
 ${RELIEF_GLSL}
 ${STAGE_GLSL}
 ${GLASS_GLSL}
+${EMITTER_GLSL}
 ${customFns.join("\n")}
 void main() {
   vec2 uv = v_uv;
@@ -109,6 +118,7 @@ void main() {
   vec4 c = texture2D(u_tex, uv) * u_alpha;
   ${colorOpsFull}
   ${materialOp}
+  ${lightOp}
   gl_FragColor = c;
 }`;
 }
@@ -131,6 +141,7 @@ interface TexRecord {
   width: number;
   height: number;
   effectsKey: string;
+  emittersKey: string;
   program: WebGLProgram;
 }
 
@@ -167,11 +178,17 @@ export function createWebGLComposite(canvas: HTMLCanvasElement): CompositeBacken
   function programFor(
     effects: EffectDesc[],
     material?: CompositeLayerInput["material"],
+    emitters?: CompositeLayerInput["emitters"],
   ): WebGLProgram {
-    const key = JSON.stringify([effects.map((e) => e.kind), material?.kind, material]);
+    const key = JSON.stringify([
+      effects.map((e) => e.kind),
+      material?.kind,
+      material,
+      emitters,
+    ]);
     let prog = programs.get(key);
     if (prog) return prog;
-    const fs = compile(gl, gl.FRAGMENT_SHADER, fragmentSrc(effects, material));
+    const fs = compile(gl, gl.FRAGMENT_SHADER, fragmentSrc(effects, material, emitters));
     prog = gl.createProgram();
     if (!prog) throw new FigmentUnsupportedError("missing-api", "WebGL createProgram failed");
     gl.attachShader(prog, vs);
@@ -206,13 +223,23 @@ export function createWebGLComposite(canvas: HTMLCanvasElement): CompositeBacken
         const effects = layer.effects ?? [];
         validateEffectChain(effects);
         const material = layer.material;
+        const emitters = layer.emitters;
 
         const w = Math.max(1, Math.ceil(layer.width));
         const h = Math.max(1, Math.ceil(layer.height));
         const key = `L${i}`;
         let rec = textures.get(key);
+        // Texture cache ignores emitter positions (lights are uniforms only —
+        // moving a light must not force a recapture).
         const effectsKey = JSON.stringify([effects, material]);
-        if (!rec || rec.width !== w || rec.height !== h || rec.effectsKey !== effectsKey) {
+        const emittersKey = JSON.stringify(emitters);
+        if (
+          !rec ||
+          rec.width !== w ||
+          rec.height !== h ||
+          rec.effectsKey !== effectsKey ||
+          rec.emittersKey !== emittersKey
+        ) {
           if (rec) gl.deleteTexture(rec.texture);
           const texture = gl.createTexture();
           if (!texture) throw new FigmentUnsupportedError("missing-api", "createTexture");
@@ -228,10 +255,12 @@ export function createWebGLComposite(canvas: HTMLCanvasElement): CompositeBacken
             width: w,
             height: h,
             effectsKey,
-            program: programFor(effects, material),
+            emittersKey,
+            program: programFor(effects, material, emitters),
           };
           textures.set(key, rec);
         }
+        if (!rec) throw new FigmentUnsupportedError("missing-api", "layer texture missing");
 
         // Direct upload — no 2D staging canvas.
         (gl as WebGLRenderingContext & { texElementSubImage2D: TexElementSubImage2D })

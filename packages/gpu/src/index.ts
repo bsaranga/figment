@@ -85,3 +85,17 @@ export {
   type GlassDesc,
   type ResolvedGlass,
 } from "./materials/glass.js";
+
+export {
+  setEmitters,
+  getEmitters,
+  clearEmitters,
+  resolveEmitter,
+  resolveEmitters,
+  pointerEmitter,
+  lightUniformGlsl,
+  EMITTER_GLSL,
+  MAX_EMITTERS,
+  type Emitter,
+  type ResolvedEmitter,
+} from "./emitters.js";
