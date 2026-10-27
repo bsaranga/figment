@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>figment — GPU-native UI with real HTML</title>
+  <meta name="description" content="Ship GPU-composited, spatial application UIs — glass, light, tilt, infinite canvas — with the HTML you already write. Clicks, forms, and screen readers intact." />
+  <meta property="og:title" content="figment — GPU-native UI with real HTML" />
+  <meta property="og:description" content="The full stack for canvas-native apps. Real DOM. Real hits. Real a11y." />
+  <meta name="theme-color" content="#0b0d12" />
+  <style>
+    :root {
+      --bg: #07090f;
+      --bg-2: #0c1018;
+      --ink: #eef2ff;
+      --muted: #9aa6c0;
+      --line: rgba(148, 163, 204, 0.14);
+      --accent: #7c9cff;
+      --accent-2: #c46cff;
+      --accent-3: #3dd6c6;
+      --glass: rgba(18, 24, 40, 0.55);
+      --radius: 22px;
+      --max: 1120px;
+      --font: "SF Pro Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .wrap {
+      width: min(var(--max), calc(100% - 2.5rem));
+      margin-inline: auto;
+    }
+
+    /* Ambient field */
+    .aurora {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(900px 500px at 15% -10%, rgba(124, 156, 255, 0.22), transparent 60%),
+        radial-gradient(800px 480px at 90% 10%, rgba(196, 108, 255, 0.16), transparent 55%),
+        radial-gradient(700px 420px at 50% 100%, rgba(61, 214, 198, 0.10), transparent 55%);
+    }
+
+    .grid-lines {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.35;
+      background-image:
+        linear-gradient(to right, var(--line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+      background-size: 72px 72px;
+      mask-image: radial-gradient(ellipse 70% 60% at 50% 20%, #000 20%, transparent 75%);
+    }
+
+    /* Nav */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(18px) saturate(140%);
+      background: rgba(7, 9, 15, 0.65);
+      border-bottom: 1px solid var(--line);
+    }
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.95rem 0;
+      gap: 1rem;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-weight: 650;
+      letter-spacing: -0.03em;
+      font-size: 1.15rem;
+    }
+    .logo-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      background:
+        linear-gradient(135deg, rgba(124,156,255,0.95), rgba(196,108,255,0.85) 55%, rgba(61,214,198,0.9));
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.12), 0 10px 30px rgba(124,156,255,0.35);
+    }
+    .nav-links {
+      display: flex;
+      gap: 1.4rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    .nav-links a:hover { color: var(--ink); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.72rem 1.15rem;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-weight: 600;
+      font-size: 0.92rem;
+      transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #8aa6ff, #b48cff 50%, #7be0d4);
+      color: #0a0d14;
+      box-shadow: 0 12px 40px rgba(124, 156, 255, 0.35);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 18px 48px rgba(124, 156, 255, 0.45); }
+    .btn-ghost {
+      border-color: var(--line);
+      background: rgba(255,255,255,0.03);
+      color: var(--ink);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.07); }
+
+    /* Hero */
+    .hero {
+      position: relative;
+      z-index: 1;
+      padding: 6.5rem 0 5rem;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+      color: var(--muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.02em;
+    }
+    .eyebrow .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-3);
+      box-shadow: 0 0 12px var(--accent-3);
+    }
+    h1 {
+      margin: 1.35rem 0 1.15rem;
+      font-size: clamp(2.6rem, 6.4vw, 5.1rem);
+      line-height: 1.02;
+      letter-spacing: -0.045em;
+      font-weight: 700;
+      max-width: 14ch;
+    }
+    .grad {
+      background: linear-gradient(120deg, #dce7ff 0%, #b8a4ff 35%, #7ce0d4 70%, #dce7ff 100%);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: shine 10s ease-in-out infinite;
+    }
+    @keyframes shine {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .lede {
+      max-width: 38rem;
+      font-size: clamp(1.1rem, 2vw, 1.35rem);
+      color: var(--muted);
+      margin: 0 0 2rem;
+    }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 0.85rem; margin-bottom: 3.25rem; }
+
+    .hero-stage {
+      position: relative;
+      border-radius: calc(var(--radius) + 6px);
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02) 40%, rgba(124,156,255,0.08));
+      padding: 1.25rem;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .stage-chrome {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      margin-bottom: 1rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    .stage-chrome i {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #ff5f57; display: inline-block;
+    }
+    .stage-chrome i:nth-child(2) { background: #febc2e; }
+    .stage-chrome i:nth-child(3) { background: #28c840; }
+    .stage-chrome span { margin-left: 0.55rem; font-family: var(--mono); opacity: 0.8; }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1.2fr 0.9fr;
+      gap: 1rem;
+      min-height: 320px;
+    }
+    .panel {
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: var(--glass);
+      padding: 1.25rem 1.35rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 18px 50px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+    .panel h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+    }
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    .panel-form {
+      display: grid;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .panel-form label {
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .panel-form input,
+    .panel-form select {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(8, 12, 22, 0.65);
+      color: var(--ink);
+      padding: 0.72rem 0.85rem;
+      font: inherit;
+      font-size: 0.92rem;
+    }
+    .panel-form input:focus,
+    .panel-form select:focus {
+      outline: 2px solid rgba(124,156,255,0.55);
+      outline-offset: 1px;
+    }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.9rem; }
+    .chip {
+      font-size: 0.75rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--muted);
+      background: rgba(255,255,255,0.03);
+    }
+    .chip strong { color: var(--ink); font-weight: 600; }
+
+    .panel-tilt {
+      transform: perspective(900px) rotateY(-8deg) rotateX(4deg);
+      transition: transform .45s ease;
+    }
+    .hero-stage:hover .panel-tilt {
+      transform: perspective(900px) rotateY(-3deg) rotateX(1.5deg) translateY(-4px);
+    }
+
+    /* Sections */
+    section {
+      position: relative;
+      z-index: 1;
+      padding: 5.5rem 0;
+    }
+    .section-head {
+      max-width: 40rem;
+      margin-bottom: 2.5rem;
+    }
+    .section-head h2 {
+      margin: 0.65rem 0 0.85rem;
+      font-size: clamp(1.9rem, 3.6vw, 2.85rem);
+      letter-spacing: -0.035em;
+      line-height: 1.12;
+    }
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+    .kicker {
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 650;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    .card {
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
+      padding: 1.45rem 1.4rem 1.55rem;
+      min-height: 220px;
+      transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(124,156,255,0.35);
+      box-shadow: 0 24px 60px rgba(20, 40, 100, 0.28);
+    }
+    .card .icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 1rem;
+      background: rgba(124,156,255,0.12);
+      border: 1px solid rgba(124,156,255,0.22);
+      font-size: 1.15rem;
+    }
+    .card h3 {
+      margin: 0 0 0.55rem;
+      font-size: 1.12rem;
+      letter-spacing: -0.02em;
+    }
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    /* Split */
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      align-items: stretch;
+    }
+    .code {
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: #0a0e17;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+    }
+    .code-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.85rem 1.1rem;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-family: var(--mono);
+    }
+    pre {
+      margin: 0;
+      padding: 1.25rem 1.35rem 1.5rem;
+      overflow: auto;
+      font-family: var(--mono);
+      font-size: 0.86rem;
+      line-height: 1.65;
+      color: #d7e0ff;
+    }
+    .tok-k { color: #c792ea; }
+    .tok-s { color: #c3e88d; }
+    .tok-c { color: #6b7896; }
+    .tok-f { color: #82aaff; }
+    .tok-n { color: #f78c6c; }
+
+    .promise {
+      display: grid;
+      gap: 1rem;
+    }
+    .promise-item {
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+      padding: 1.15rem 1.25rem;
+    }
+    .promise-item h3 {
+      margin: 0 0 0.4rem;
+      font-size: 1.02rem;
+    }
+    .promise-item p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.93rem;
+    }
+
+    /* Stats / demo strip */
+    .strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+    .stat {
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      padding: 1.35rem 1.25rem;
+      background: linear-gradient(160deg, rgba(124,156,255,0.10), rgba(255,255,255,0.02));
+    }
+    .stat b {
+      display: block;
+      font-size: clamp(1.7rem, 3vw, 2.25rem);
+      letter-spacing: -0.04em;
+      margin-bottom: 0.25rem;
+    }
+    .stat span { color: var(--muted); font-size: 0.9rem; }
+
+    /* Demo cards */
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+    .demo {
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      padding: 1.6rem 1.55rem;
+      background:
+        radial-gradient(500px 180px at 10% 0%, rgba(124,156,255,0.16), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+      min-height: 190px;
+    }
+    .demo h3 { margin: 0 0 0.55rem; font-size: 1.25rem; letter-spacing: -0.02em; }
+    .demo p { margin: 0; color: var(--muted); }
+    .demo .tag {
+      display: inline-block;
+      margin-bottom: 0.85rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-3);
+      font-weight: 700;
+    }
+
+    /* CTA */
+    .cta {
+      border-radius: calc(var(--radius) + 8px);
+      border: 1px solid rgba(124,156,255,0.28);
+      padding: clamp(2.2rem, 5vw, 3.5rem);
+      background:
+        radial-gradient(700px 240px at 20% 0%, rgba(124,156,255,0.22), transparent 55%),
+        radial-gradient(500px 220px at 90% 100%, rgba(196,108,255,0.18), transparent 50%),
+        rgba(12,16,28,0.8);
+      text-align: center;
+    }
+    .cta h2 {
+      margin: 0 auto 0.85rem;
+      max-width: 16ch;
+      font-size: clamp(2rem, 4vw, 3.1rem);
+      letter-spacing: -0.04em;
+      line-height: 1.08;
+    }
+    .cta p {
+      margin: 0 auto 1.8rem;
+      max-width: 36rem;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+    .cta-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.85rem; }
+
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--line);
+      padding: 2.25rem 0 3rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .footer-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .footer-links { display: flex; gap: 1.15rem; }
+    .footer-links a:hover { color: var(--ink); }
+
+    /* Reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity .7s ease, transform .7s ease;
+    }
+    .reveal.in { opacity: 1; transform: none; }
+
+    @media (max-width: 900px) {
+      .panels, .split, .cards, .demo-grid, .strip { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+      .hero { padding-top: 4.25rem; }
+      .panel-tilt { transform: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .grad { animation: none; }
+      .reveal { opacity: 1; transform: none; transition: none; }
+      .card:hover, .panel-tilt { transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"></div>
+  <div class="grid-lines" aria-hidden="true"></div>
+
+  <header>
+    <div class="wrap">
+      <nav>
+        <a class="logo" href="#top" aria-label="figment home">
+          <span class="logo-mark" aria-hidden="true"></span>
+          figment
+        </a>
+        <div class="nav-links">
+          <a href="#thesis">Thesis</a>
+          <a href="#capabilities">Capabilities</a>
+          <a href="#stack">Stack</a>
+          <a href="#demos">Demos</a>
+          <a href="#status">Status</a>
+        </div>
+        <a class="btn btn-primary" href="https://github.com/bsaranga/figment" target="_blank" rel="noreferrer">View on GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap">
+        <div class="eyebrow"><span class="dot" aria-hidden="true"></span> Early preview · HTML-in-Canvas · Chrome 157+</div>
+        <h1>Ship <span class="grad">GPU-native UI</span> with the HTML you already write.</h1>
+        <p class="lede">
+          figment is the full stack for canvas-native apps — surface runtime, GPU framework, and spatial UI kit.
+          Glass, light, tilt, infinite canvas, Z-space stories. Without losing clicks, forms, or screen readers.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="https://github.com/bsaranga/figment" target="_blank" rel="noreferrer">Star the repo</a>
+          <a class="btn btn-ghost" href="#demos">See what’s possible</a>
+        </div>
+
+        <div class="hero-stage reveal" aria-label="Product preview">
+          <div class="stage-chrome">
+            <i></i><i></i><i></i>
+            <span>figment · spatial shell · live HTML as GPU material</span>
+          </div>
+          <div class="panels">
+            <div class="panel">
+              <h3>Native form, GPU chrome</h3>
+              <p>A real <code>&lt;form&gt;</code> with focus, IME, and validation — wearing glass and light.</p>
+              <div class="panel-form">
+                <label>
+                  Name
+                  <input type="text" value="Ada Lovelace" />
+                </label>
+                <label>
+                  Workspace
+                  <select>
+                    <option>Infinite canvas</option>
+                    <option>Agent workspace</option>
+                    <option>Game HUD</option>
+                  </select>
+                </label>
+                <div class="chip-row">
+                  <span class="chip"><strong>hits</strong> correct</span>
+                  <span class="chip"><strong>a11y</strong> intact</span>
+                  <span class="chip"><strong>60fps</strong> composite</span>
+                </div>
+              </div>
+            </div>
+            <div class="panel panel-tilt">
+              <h3>Tilted panel · still clickable</h3>
+              <p>Projective geometry with one canonical matrix for draw, hits, and DOM.</p>
+              <div class="chip-row" style="margin-top: 1.25rem;">
+                <span class="chip">WebGPU ready</span>
+                <span class="chip">defineEffect</span>
+                <span class="chip">scroll → Z</span>
+              </div>
+              <div class="chip-row">
+                <span class="chip">React · Vue · Svelte · HTMX</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="thesis">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">The thesis</div>
+          <h2>Most “beautiful” web UIs are a screenshot with a button taped on.</h2>
+          <p>
+            Teams fake depth with images, then rebuild every interaction in canvas.
+            figment treats live DOM as a first-class GPU material — so you keep the platform and gain the picture.
+          </p>
+        </div>
+        <div class="strip reveal">
+          <div class="stat"><b>HTML</b><span>Any framework’s DOM, unchanged</span></div>
+          <div class="stat"><b>GPU</b><span>Effects, materials, lights, motion</span></div>
+          <div class="stat"><b>Hits</b><span>What you see is what you click</span></div>
+          <div class="stat"><b>A11y</b><span>Keyboard + screen readers, not afterthoughts</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="capabilities">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">Capabilities</div>
+          <h2>An early peek at the material system.</h2>
+          <p>These are product goals we’re actively building — ranked against hero demos, not a feature checklist.</p>
+        </div>
+        <div class="cards">
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true">◈</div>
+            <h3>DOM is a GPU material</h3>
+            <p>Live HTML as a texture in 2D / WebGL / WebGPU. Glass command palettes, lit panels, dissolve chrome — without screenshot hacks.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true">⬡</div>
+            <h3>Spatial &amp; infinite</h3>
+            <p>Pan/zoom worlds, tilted panels with correct hit-testing, layer stacks, and scroll-into-screen Z-space stories.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true">⌘</div>
+            <h3>Product chrome that scales</h3>
+            <p>Command palette, modal, toast, virtualized lists, native form controls — kit components that still work as software.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true">⧉</div>
+            <h3>Any framework, today</h3>
+            <p>Mount React, Vue, Svelte, Angular, HTMX, or vanilla DOM. No custom reconciler. Thin optional bindings.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true">✦</div>
+            <h3>Custom looks, safe contracts</h3>
+            <p><code>defineEffect</code> shaders for proprietary art direction — with decorative/inert/material interaction contracts.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true">⎙</div>
+            <h3>Export &amp; workflow</h3>
+            <p><code>paintOnce()</code> → PNG / video frames for OG images and docs, plus an agent skill so AI tools wire it correctly.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="stack">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">Developer experience</div>
+          <h2>Keep your components. Add a surface.</h2>
+          <p>Host owns paint, geometry, hits, and admission. Your framework keeps ownership of the tree.</p>
+        </div>
+        <div class="split">
+          <div class="code reveal">
+            <div class="code-bar"><span>app.ts</span><span>@figment/host</span></div>
+            <pre><code><span class="tok-k">import</span> { createHost } <span class="tok-k">from</span> <span class="tok-s">"@figment/host"</span>;
+
+<span class="tok-k">const</span> host = <span class="tok-f">createHost</span>(stage, { backend: <span class="tok-s">"2d"</span> });
+<span class="tok-k">await</span> host.<span class="tok-f">admit</span>();          <span class="tok-c">// pixel + hit probes</span>
+host.<span class="tok-f">mount</span>(stage);
+
+<span class="tok-k">const</span> panel = host.<span class="tok-f">layer</span>(form, {
+  id: <span class="tok-s">"profile"</span>,
+  transform: { x: <span class="tok-n">24</span>, y: <span class="tok-n">24</span> },
+  origin: <span class="tok-s">"center"</span>,
+  preserveHitTestOrder: <span class="tok-k">true</span>,
+});
+
+<span class="tok-c">// Scroll flies HTML through depth</span>
+<span class="tok-c">// layer.setTransform({ z: -2400 }) + scrollTrack</span></code></pre>
+          </div>
+          <div class="promise reveal">
+            <div class="promise-item">
+              <h3>Fail-fast, never fake</h3>
+              <p>Missing capability throws <code>FigmentUnsupportedError</code>. No silent fallbacks, no broken UI.</p>
+            </div>
+            <div class="promise-item">
+              <h3>Seamless first enable</h3>
+              <p>Swap only when a complete frame exists. Users never see a blank flash on startup.</p>
+            </div>
+            <div class="promise-item">
+              <h3>Admission, not sniffing</h3>
+              <p>Known-color pixel readback + transformed <code>elementFromPoint</code> proofs before any GPU path.</p>
+            </div>
+            <div class="promise-item">
+              <h3>Hit stack that behaves</h3>
+              <p><code>preserveHitTestOrder</code>, canvas clips, and pivot-correct rotation — clicks match pixels.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="demos">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">Hero demos</div>
+          <h2>If it can’t sell the architecture, it doesn’t ship.</h2>
+          <p>Quality bar: stand next to Awwwards SOTY work — Design first, Creativity differentiates, Dev craft is table stakes.</p>
+        </div>
+        <div class="demo-grid">
+          <article class="demo reveal">
+            <div class="tag">Spatial whiteboard</div>
+            <h3>Infinite canvas, real widgets</h3>
+            <p>Pan/zoom world space with HTML panels, minimap, virtualized layers — Figma-class tools without a custom renderer.</p>
+          </article>
+          <article class="demo reveal">
+            <div class="tag">Z-scroll story</div>
+            <h3>Scroll is a camera</h3>
+            <p>Depth fly-throughs where panels approach, pass, and exit under native scroll — still focusable, still accessible.</p>
+          </article>
+          <article class="demo reveal">
+            <div class="tag">Glass HUD game</div>
+            <h3>World-space UI that works</h3>
+            <p>Emitters, protected text, keyboard and AT — the first game HUD screen readers can actually use.</p>
+          </article>
+          <article class="demo reveal">
+            <div class="tag">Agent workspace</div>
+            <h3>Chrome that feels physical</h3>
+            <p>Floating tools, ⌘K palette, dissolve toasts, any-FE mount. Product surfaces that look like places.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="status">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">Status</div>
+          <h2>Honest early. Already real.</h2>
+          <p>
+            Surface runtime is in flight: mount any DOM, paint, hits, admission probes, seamless enable,
+            hit stack, clips, and transform pivots. GPU materials and tilt are next.
+          </p>
+        </div>
+        <div class="cards">
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true">✓</div>
+            <h3>M1 · Surface runtime</h3>
+            <p>Mount, paint pipeline, mutation filter, units, geometry, 2D backend. React + vanilla parity tests green.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true">◌</div>
+            <h3>M2 · Geometry depth</h3>
+            <p>Pixel/hit admission, seamless first enable, hit stack + clip, transform origin. Tilt &amp; Z-camera in progress.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true">→</div>
+            <h3>Next · GPU + kit</h3>
+            <p>Effects, materials, lights, scroll→Z tracks, spatial UI kit components, framework bindings.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="cta reveal">
+          <h2>Build UI that feels like a place.</h2>
+          <p>
+            figment is open source and under active development.
+            Star the repo, read the architecture, and help shape the canvas-native stack.
+          </p>
+          <div class="cta-actions">
+            <a class="btn btn-primary" href="https://github.com/bsaranga/figment" target="_blank" rel="noreferrer">github.com/bsaranga/figment</a>
+            <a class="btn btn-ghost" href="https://github.com/bsaranga/figment/blob/main/GOALS.md" target="_blank" rel="noreferrer">Read the north star</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-row">
+      <div>figment · GPU-native UI with real HTML · Chrome HTML-in-Canvas</div>
+      <div class="footer-links">
+        <a href="https://github.com/bsaranga/figment/blob/main/ARCHITECTURE.md" target="_blank" rel="noreferrer">Architecture</a>
+        <a href="https://github.com/bsaranga/figment/blob/main/PLAN.md" target="_blank" rel="noreferrer">Roadmap</a>
+        <a href="https://github.com/bsaranga/figment/blob/main/ACTIVATION.md" target="_blank" rel="noreferrer">Activation</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const els = document.querySelectorAll(".reveal");
+    if ("IntersectionObserver" in window) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          }
+        },
+        { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+      );
+      els.forEach((el) => io.observe(el));
+    } else {
+      els.forEach((el) => el.classList.add("in"));
+    }
+  </script>
+</body>
+</html>
