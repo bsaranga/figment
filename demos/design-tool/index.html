@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>figment — design tool</title>
+    <title>figment — design tool (HTML-in-Canvas)</title>
     <style>
       :root {
         color-scheme: dark;
@@ -21,7 +21,7 @@
         height: 100%;
         display: grid;
         grid-template-rows: auto 1fr;
-        grid-template-columns: 220px 1fr 240px;
+        grid-template-columns: 220px 1fr 260px;
         grid-template-areas:
           "top top top"
           "left stage right";
@@ -40,9 +40,7 @@
         font-size: 0.95rem;
         letter-spacing: -0.02em;
       }
-      header .spacer {
-        flex: 1;
-      }
+      header .spacer { flex: 1; }
       header button {
         font: inherit;
         font-size: 0.85rem;
@@ -61,14 +59,11 @@
       }
       aside {
         overflow: auto;
-        border-right: 1px solid rgba(148, 163, 204, 0.14);
         background: #0c1018;
         padding: 12px;
       }
-      aside.right {
-        border-right: 0;
-        border-left: 1px solid rgba(148, 163, 204, 0.14);
-      }
+      aside.left { border-right: 1px solid rgba(148, 163, 204, 0.14); }
+      aside.right { border-left: 1px solid rgba(148, 163, 204, 0.14); }
       aside h2 {
         margin: 0 0 10px;
         font-size: 0.75rem;
@@ -76,22 +71,27 @@
         text-transform: uppercase;
         opacity: 0.7;
       }
-      #layers {
-        height: calc(100% - 28px);
-      }
+      #layers { height: calc(100% - 28px); }
       #stage {
         position: relative;
         min-width: 0;
+        background: #12161f;
       }
-      figment-infinite-canvas {
+      /* Host surface: real HTML-in-Canvas */
+      #surface {
+        display: block;
         width: 100%;
         height: 100%;
+        background: #12161f;
       }
-      figment-minimap {
-        position: absolute;
-        right: 12px;
-        bottom: 12px;
-        z-index: 4;
+      #glass-preview {
+        display: block;
+        width: 100%;
+        height: 160px;
+        border-radius: 12px;
+        margin-top: 12px;
+        background: #0e131c;
+        border: 1px solid rgba(148, 163, 204, 0.14);
       }
       .field {
         display: flex;
@@ -100,10 +100,7 @@
         margin-bottom: 12px;
         font-size: 0.85rem;
       }
-      .field span {
-        opacity: 0.75;
-        font-size: 0.75rem;
-      }
+      .field span { opacity: 0.75; font-size: 0.75rem; }
       .field input {
         font: inherit;
         border-radius: 10px;
@@ -117,6 +114,14 @@
         font-size: 0.78rem;
         line-height: 1.5;
       }
+      #status {
+        font-family: ui-monospace, monospace;
+        font-size: 0.75rem;
+        color: #8b9bb4;
+        margin: 0 0 8px;
+      }
+      #status.ok { color: #3dd68c; }
+      #status.err { color: #f07178; }
     </style>
   </head>
   <body>
@@ -124,7 +129,7 @@
       <header>
         <h1>figment · design tool</h1>
         <button type="button" id="btn-add">Add frame</button>
-        <button type="button" id="btn-fit">Fit</button>
+        <button type="button" id="btn-glass">Toggle glass</button>
         <div class="spacer"></div>
         <button type="button" id="btn-palette">⌘K</button>
         <button type="button" class="primary" id="btn-export">Export PNG</button>
@@ -136,13 +141,18 @@
       </aside>
 
       <div id="stage">
-        <figment-infinite-canvas id="canvas">
-          <figment-layer-stack id="stack"></figment-layer-stack>
-        </figment-infinite-canvas>
-        <figment-minimap id="minimap"></figment-minimap>
+        <!-- HTML-in-Canvas surface: frames are live DOM, GPU-drawn -->
+        <canvas
+          id="surface"
+          width="960"
+          height="640"
+          content="drawable"
+          aria-label="Design surface"
+        ></canvas>
       </div>
 
       <aside class="right">
+        <div id="status">booting…</div>
         <h2>Inspector</h2>
         <label class="field">
           <span>Name</span>
@@ -156,9 +166,18 @@
           <span>Z depth</span>
           <input id="insp-z" type="number" value="0" />
         </label>
+        <h2>Glass preview</h2>
+        <canvas
+          id="glass-preview"
+          width="480"
+          height="160"
+          content="drawable"
+          aria-label="Glass preview"
+        ></canvas>
         <p class="hint">
-          Select a frame on the board. Export PNG uses <code>exportPng()</code>
-          after a clean <code>paintOnce()</code>.
+          Stage is a real <code>content="drawable"</code> canvas via
+          <code>@figment/host</code>. Export uses <code>exportPng()</code>.
+          Glass preview is <code>@figment/gpu</code> composite + pointer light.
         </p>
       </aside>
     </div>
