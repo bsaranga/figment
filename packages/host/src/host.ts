@@ -642,6 +642,38 @@ class HostImpl implements Host {
     });
   }
 
+  /**
+   * M5d — export readiness → PNG (or other image type).
+   * Paints one complete frame first, then snapshots the surface.
+   */
+  async exportPng(
+    options: { type?: string; quality?: number } = {},
+  ): Promise<Blob> {
+    await this.paintOnce();
+    const type = options.type ?? "image/png";
+    const canvas = this.canvas;
+    if (typeof canvas.toBlob === "function") {
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(
+          (b) => resolve(b),
+          type,
+          options.quality,
+        );
+      });
+      if (!blob) {
+        throw new PaintTimeoutError(`exportPng: toBlob returned null (${type})`);
+      }
+      return blob;
+    }
+    // Fallback path: data URL → Blob
+    const url = canvas.toDataURL(type, options.quality);
+    return dataUrlToBlob(url);
+  }
+
+  exportDataUrl(type = "image/png"): string {
+    return this.canvas.toDataURL(type);
+  }
+
   private schedulePaintOnce(
     resolve: () => void,
     reject: (e: unknown) => void,
@@ -903,6 +935,20 @@ function applyElementClipPath(rec: LayerRecord): void {
   const insetBottom = Math.max(0, height - localBottom);
 
   el.style.clipPath = `inset(${insetTop}px ${insetRight}px ${insetBottom}px ${insetLeft}px)`;
+}
+
+function dataUrlToBlob(dataUrl: string): Blob {
+  const comma = dataUrl.indexOf(",");
+  const meta = dataUrl.slice(0, comma);
+  const body = dataUrl.slice(comma + 1);
+  const mime = /data:([^;]+)/.exec(meta)?.[1] ?? "application/octet-stream";
+  if (meta.includes(";base64")) {
+    const bin = atob(body);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  }
+  return new Blob([decodeURIComponent(body)], { type: mime });
 }
 
 export function createHost(

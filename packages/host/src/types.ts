@@ -125,6 +125,13 @@ export interface Host {
   requestPaint(): void;
   invalidate(layer?: LayerHandle): void;
   paintOnce(): Promise<void>;
+  /**
+   * M5d: wait for a clean frame, then export the surface as PNG.
+   * For OG images, docs, and marketing from live UI.
+   */
+  exportPng(options?: { type?: string; quality?: number }): Promise<Blob>;
+  /** M5d: synchronous data-URL snapshot (after paint). */
+  exportDataUrl(type?: string): string;
   /** M2d: sync geometry to the browser hit stack (clip, transform, order). */
   updateGeometry(id: string, g: GeometryUpdate): void;
   /** M2d: drop browser hit/a11y geometry for a layer (on retire). */

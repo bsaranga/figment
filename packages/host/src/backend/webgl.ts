@@ -111,6 +111,8 @@ export function createWebGLBackend(canvas: HTMLCanvasElement): WebGLBackend {
     alpha: true,
     premultipliedAlpha: true,
     antialias: true,
+    // M5d: PNG export needs the last frame readable after draw.
+    preserveDrawingBuffer: true,
   });
   if (!glMaybe) {
     throw new FigmentUnsupportedError("missing-api", "WebGL context unavailable");
