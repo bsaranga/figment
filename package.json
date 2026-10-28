@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "test:browser": "playwright test",
     "dev": "pnpm --filter @figment/demo-vanilla-mount dev",
-    "lint": "pnpm typecheck"
+    "lint": "pnpm typecheck",
+    "promo:build": "vite build --config promo-src/vite.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",

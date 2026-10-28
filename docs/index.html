@@ -283,6 +283,50 @@
     }
 
 
+
+    /* Live HTML-in-Canvas demos (promo bundle) */
+    .live-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 860px) {
+      .live-grid { grid-template-columns: 1fr; }
+    }
+    .live-card {
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+      padding: 1.15rem;
+    }
+    .live-card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+    }
+    .live-card p {
+      margin: 0 0 0.85rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .live-canvas {
+      display: block;
+      width: 100%;
+      height: 280px;
+      border-radius: 14px;
+      background: #12161f;
+      border: 1px solid rgba(148, 163, 204, 0.16);
+      touch-action: none;
+    }
+    .live-status {
+      margin: 0.75rem 0 0;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .live-status.ok { color: #3dd68c; }
+    .live-status.err { color: #f07178; }
+
     /* Z-scroll glass warp story */
     .warp-story {
       position: relative;
@@ -779,6 +823,49 @@
       </div>
     </section>
 
+
+    <section id="live-canvas">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">Live · HTML-in-Canvas</div>
+          <h2>Not mockups. Real canvases.</h2>
+          <p>
+            These are <code>&lt;canvas content="drawable"&gt;</code> surfaces running
+            <code>@figment/host</code> and <code>@figment/gpu</code> in your browser
+            (Chrome 157+). Type in the cards — the HTML is live.
+          </p>
+        </div>
+        <div class="live-grid">
+          <div class="live-card reveal">
+            <h3>Surface runtime</h3>
+            <p>Admit → mount → layer → paint. Native input inside the drawable canvas.</p>
+            <canvas
+              id="promo-host-canvas"
+              class="live-canvas"
+              width="640"
+              height="280"
+              content="drawable"
+              aria-label="HTML-in-Canvas host demo"
+            ></canvas>
+            <div id="promo-host-status" class="live-status">booting…</div>
+          </div>
+          <div class="live-card reveal">
+            <h3>Glass refraction</h3>
+            <p>WebGL composite + glass material. Pointer light without recapture.</p>
+            <canvas
+              id="promo-glass-canvas"
+              class="live-canvas"
+              width="640"
+              height="280"
+              content="drawable"
+              aria-label="HTML-in-Canvas glass demo"
+            ></canvas>
+            <div id="promo-glass-status" class="live-status">booting…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="thesis" class="warp-arrive">
       <div class="wrap">
         <div class="section-head reveal">
@@ -1060,5 +1147,6 @@ host.<span class="tok-f">mount</span>(stage);
       els.forEach((el) => el.classList.add("in"));
     }
   </script>
+  <script type="module" src="./assets/promo-demos.js"></script>
 </body>
 </html>
