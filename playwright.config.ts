@@ -92,6 +92,12 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },
+    {
+      command: "python3 -m http.server 5180 --directory docs",
+      port: 5180,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
   ],
   projects: [
     {
