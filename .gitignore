@@ -9,3 +9,9 @@ blob-report/
 .playwright/
 .env
 .env.*
+
+# tsc -b composite emit (typecheck only — never commit)
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map
+packages/*/src/**/*.js.map

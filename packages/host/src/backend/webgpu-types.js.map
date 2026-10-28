@@ -1,1 +1,0 @@
-{"version":3,"file":"webgpu-types.js","sourceRoot":"","sources":["webgpu-types.ts"],"names":[],"mappings":"AA6DA,MAAM,CAAC,MAAM,cAAc,GAAG;IAC5B,MAAM,EAAE,IAAI;IACZ,QAAQ,EAAE,GAAG;IACb,OAAO,EAAE,IAAI;CACL,CAAC;AACX,MAAM,CAAC,MAAM,eAAe,GAAG;IAC7B,eAAe,EAAE,IAAI;IACrB,QAAQ,EAAE,IAAI;IACd,iBAAiB,EAAE,IAAI;CACf,CAAC"}
