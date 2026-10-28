@@ -98,6 +98,12 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },
+    {
+      command: "pnpm --filter @figment/demo-design-tool dev",
+      port: 5178,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
   ],
   projects: [
     {
