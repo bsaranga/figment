@@ -109,3 +109,12 @@ export {
   registerVirtualGrid,
   type GridSize,
 } from "./virtual-grid.js";
+
+export {
+  FigmentField,
+  FigmentInput,
+  FigmentSelect,
+  FigmentSlider,
+  FigmentCheckbox,
+  registerFormControls,
+} from "./forms.js";
