@@ -40,10 +40,7 @@ function Ft(e) {
 function Dt(e) {
   const t = Ft(e);
   if (!t.ok)
-    throw new x(
-      "missing-api",
-      `HTML-in-Canvas unavailable. Missing: ${t.missing.join(", ")}. See ACTIVATION.md for Chrome Canary flags / Origin Trial.`
-    );
+    throw new x("missing-api", `HTML-in-Canvas unavailable. Missing: ${t.missing.join(", ")}. See ACTIVATION.md for Chrome Canary flags / Origin Trial.`);
   return t;
 }
 function it(e, t) {
@@ -76,7 +73,8 @@ const kt = {
 function Ot(e) {
   if (e.type === "attributes") {
     const t = e.attributeName;
-    if (!t || It.has(t)) return !1;
+    if (!t || It.has(t))
+      return !1;
     const i = e.target.getAttributeNS(e.attributeNamespace, t);
     return e.oldValue === i;
   }
@@ -326,15 +324,9 @@ async function Yt(e = {}) {
 async function qt(e = {}) {
   const t = await Yt(e);
   if (!t.pixel.ok)
-    throw new x(
-      "probe-failed",
-      `${t.pixel.detail}. See ACTIVATION.md (Chrome 157+ / Canary flags).`
-    );
+    throw new x("probe-failed", `${t.pixel.detail}. See ACTIVATION.md (Chrome 157+ / Canary flags).`);
   if (!t.hit.ok)
-    throw new x(
-      "probe-failed",
-      `${t.hit.detail}. See ACTIVATION.md (Chrome 157+ / Canary flags).`
-    );
+    throw new x("probe-failed", `${t.hit.detail}. See ACTIVATION.md (Chrome 157+ / Canary flags).`);
   return t;
 }
 function Vt(e) {
@@ -380,7 +372,8 @@ function jt(e, t) {
     }, t(i);
   }, s = typeof ResizeObserverEntry < "u" && "devicePixelContentBoxSize" in ResizeObserverEntry.prototype, o = new ResizeObserver((a) => {
     const c = a[0];
-    if (!c) return;
+    if (!c)
+      return;
     const f = s ? c.devicePixelContentBoxSize?.[0] : void 0, l = {
       x: c.contentRect.width,
       y: c.contentRect.height
@@ -390,10 +383,7 @@ function jt(e, t) {
     };
     r(p, l);
   });
-  return o.observe(
-    e,
-    s ? { box: "device-pixel-content-box" } : {}
-  ), {
+  return o.observe(e, s ? { box: "device-pixel-content-box" } : {}), {
     state: () => i,
     stop() {
       o.disconnect();
@@ -415,9 +405,7 @@ class Kt {
   }
   add(t, n = {}) {
     if (this.map.size >= this.budget)
-      throw new k(
-        `layer budget exceeded (${this.budget}). Increase budgets.layers.`
-      );
+      throw new k(`layer budget exceeded (${this.budget}). Increase budgets.layers.`);
     if (this.findByElement(t))
       throw new k("element already enrolled as a layer");
     const i = n.id ?? `layer-${++this.seq}`;
@@ -459,7 +447,8 @@ class Kt {
     return this.all().filter((t) => t.dirty);
   }
   markAllDirty() {
-    for (const t of this.map.values()) t.dirty = !0;
+    for (const t of this.map.values())
+      t.dirty = !0;
   }
   remove(t) {
     const n = this.map.get(t);
@@ -575,14 +564,16 @@ function oe(e) {
 function Et(e) {
   const { layers: t, cssSize: n, unitScale: i, camera: r, onlyDirty: s } = e, o = r.origin ?? { x: n.x / 2, y: n.y / 2 }, a = o.x * i.x, c = o.y * i.y, f = [];
   for (const l of t) {
-    if (s && !l.dirty) continue;
+    if (s && !l.dirty)
+      continue;
     const p = bt(l.transform.z, r);
     if (wt(p, r) !== "front") {
       l.dirty = !1;
       continue;
     }
     const u = l.element;
-    if (!(u instanceof HTMLElement) && !(u instanceof SVGElement)) continue;
+    if (!(u instanceof HTMLElement) && !(u instanceof SVGElement))
+      continue;
     const d = u.getBoundingClientRect(), h = d.width || u.clientWidth, m = d.height || u.clientHeight, g = h * i.x, v = m * i.y, y = l.drawAt ? l.drawAt.x : l.transform.x * i.x, w = l.drawAt ? l.drawAt.y : l.transform.y * i.y, E = et(p, r.perspective) ?? 1, T = vt(l.origin, { x: g, y: v });
     f.push({
       id: l.id,
@@ -664,7 +655,8 @@ void main() {
 }`;
 function at(e, t, n) {
   const i = e.createShader(t);
-  if (!i) throw new x("missing-api", "WebGL createShader failed");
+  if (!i)
+    throw new x("missing-api", "WebGL createShader failed");
   if (e.shaderSource(i, n), e.compileShader(i), !e.getShaderParameter(i, e.COMPILE_STATUS)) {
     const r = e.getShaderInfoLog(i) ?? "compile error";
     throw e.deleteShader(i), new x("missing-api", `WebGL shader: ${r}`);
@@ -689,17 +681,12 @@ function de(e) {
     throw new x("missing-api", "WebGL context unavailable");
   const n = t;
   if (typeof n.texElementSubImage2D != "function")
-    throw new x(
-      "missing-api",
-      "WebGL texElementSubImage2D missing (Chrome 155+ HTML-in-Canvas)"
-    );
+    throw new x("missing-api", "WebGL texElementSubImage2D missing (Chrome 155+ HTML-in-Canvas)");
   const r = at(n, n.VERTEX_SHADER, le), s = at(n, n.FRAGMENT_SHADER, ue), o = n.createProgram();
-  if (!o) throw new x("missing-api", "WebGL createProgram failed");
+  if (!o)
+    throw new x("missing-api", "WebGL createProgram failed");
   if (n.attachShader(o, r), n.attachShader(o, s), n.linkProgram(o), !n.getProgramParameter(o, n.LINK_STATUS))
-    throw new x(
-      "missing-api",
-      `WebGL link: ${n.getProgramInfoLog(o) ?? "failed"}`
-    );
+    throw new x("missing-api", `WebGL link: ${n.getProgramInfoLog(o) ?? "failed"}`);
   const a = n.createBuffer();
   n.bindBuffer(n.ARRAY_BUFFER, a), n.bufferData(n.ARRAY_BUFFER, new Float32Array(24), n.DYNAMIC_DRAW);
   const c = n.getAttribLocation(o, "a_pos"), f = n.getAttribLocation(o, "a_uv"), l = n.getUniformLocation(o, "u_matrix"), p = n.getUniformLocation(o, "u_resolution"), u = n.getUniformLocation(o, "u_tex"), d = n.getUniformLocation(o, "u_alpha"), h = n.getUniformLocation(o, "u_texel"), m = /* @__PURE__ */ new Map();
@@ -709,18 +696,9 @@ function de(e) {
     if (!E || E.width !== y || E.height !== w) {
       E && n.deleteTexture(E.texture);
       const T = n.createTexture();
-      if (!T) throw new x("missing-api", "WebGL createTexture failed");
-      n.bindTexture(n.TEXTURE_2D, T), n.texParameteri(n.TEXTURE_2D, n.TEXTURE_MIN_FILTER, n.LINEAR), n.texParameteri(n.TEXTURE_2D, n.TEXTURE_MAG_FILTER, n.LINEAR), n.texParameteri(n.TEXTURE_2D, n.TEXTURE_WRAP_S, n.CLAMP_TO_EDGE), n.texParameteri(n.TEXTURE_2D, n.TEXTURE_WRAP_T, n.CLAMP_TO_EDGE), n.texImage2D(
-        n.TEXTURE_2D,
-        0,
-        n.RGBA,
-        y,
-        w,
-        0,
-        n.RGBA,
-        n.UNSIGNED_BYTE,
-        null
-      ), E = { texture: T, width: y, height: w }, m.set(v.id, E);
+      if (!T)
+        throw new x("missing-api", "WebGL createTexture failed");
+      n.bindTexture(n.TEXTURE_2D, T), n.texParameteri(n.TEXTURE_2D, n.TEXTURE_MIN_FILTER, n.LINEAR), n.texParameteri(n.TEXTURE_2D, n.TEXTURE_MAG_FILTER, n.LINEAR), n.texParameteri(n.TEXTURE_2D, n.TEXTURE_WRAP_S, n.CLAMP_TO_EDGE), n.texParameteri(n.TEXTURE_2D, n.TEXTURE_WRAP_T, n.CLAMP_TO_EDGE), n.texImage2D(n.TEXTURE_2D, 0, n.RGBA, y, w, 0, n.RGBA, n.UNSIGNED_BYTE, null), E = { texture: T, width: y, height: w }, m.set(v.id, E);
     }
     return E;
   }
@@ -772,7 +750,8 @@ function de(e) {
       return R.length;
     },
     dispose() {
-      for (const v of m.values()) n.deleteTexture(v.texture);
+      for (const v of m.values())
+        n.deleteTexture(v.texture);
       m.clear(), n.deleteBuffer(a), n.deleteProgram(o), n.deleteShader(r), n.deleteShader(s);
     }
   };
@@ -891,10 +870,7 @@ async function ge(e) {
     usage: H.UNIFORM | H.COPY_DST
   }), u = /* @__PURE__ */ new Map();
   if (typeof r.queue.drawElementImageToTexture != "function")
-    throw new x(
-      "missing-api",
-      "GPUQueue.drawElementImageToTexture missing (Chrome 155+ HTML-in-Canvas)"
-    );
+    throw new x("missing-api", "GPUQueue.drawElementImageToTexture missing (Chrome 155+ HTML-in-Canvas)");
   function h(m) {
     const g = Math.max(1, Math.ceil(m.element.getBoundingClientRect().width)), v = Math.max(1, Math.ceil(m.element.getBoundingClientRect().height));
     let y = u.get(m.id);
@@ -912,13 +888,7 @@ async function ge(e) {
   return {
     kind: "webgpu",
     draw(m, g) {
-      const v = window.devicePixelRatio || 1, y = Math.max(
-        1,
-        Math.round(g.cssSize.x * g.unitScale.x * v)
-      ), w = Math.max(
-        1,
-        Math.round(g.cssSize.y * g.unitScale.y * v)
-      );
+      const v = window.devicePixelRatio || 1, y = Math.max(1, Math.round(g.cssSize.x * g.unitScale.x * v)), w = Math.max(1, Math.round(g.cssSize.y * g.unitScale.y * v));
       e.width = y, e.height = w;
       const E = Et({
         ...g,
@@ -927,10 +897,7 @@ async function ge(e) {
       });
       for (const b of E) {
         const R = h(b);
-        r.queue.drawElementImageToTexture(
-          { source: b.element, premultiplyAlpha: "premultiply" },
-          { texture: R.texture }
-        );
+        r.queue.drawElementImageToTexture({ source: b.element, premultiplyAlpha: "premultiply" }, { texture: R.texture });
       }
       const T = r.createCommandEncoder(), S = T.beginRenderPass({
         colorAttachments: [
@@ -945,7 +912,8 @@ async function ge(e) {
       S.setPipeline(c), S.setVertexBuffer(0, l);
       for (const b of E) {
         const R = u.get(b.id);
-        if (!R) continue;
+        if (!R)
+          continue;
         const A = b.x, M = b.y, P = b.x + b.width, _ = b.y + b.height, $ = new Float32Array([
           A,
           M,
@@ -988,7 +956,8 @@ async function ge(e) {
       return S.end(), r.queue.submit([T.finish()]), E.length;
     },
     dispose() {
-      for (const m of u.values()) m.texture.destroy();
+      for (const m of u.values())
+        m.texture.destroy();
       u.clear(), l.destroy(), p.destroy();
     }
   };
@@ -1089,10 +1058,7 @@ function xe(e, t) {
 }
 function ye(e) {
   const t = e.tilt.perspective && e.tilt.perspective > 0 ? e.tilt.perspective : St, n = z(e.tilt.x), i = z(e.tilt.y), r = (e.originX ?? 0.5) * e.width, s = (e.originY ?? 0.5) * e.height;
-  return { matrix: J(
-    ut(r, s),
-    J(pe(t), J(xe(n, i), ut(-r, -s)))
-  ), perspective: t, tiltX: n, tiltY: i };
+  return { matrix: J(ut(r, s), J(pe(t), J(xe(n, i), ut(-r, -s)))), perspective: t, tiltX: n, tiltY: i };
 }
 function N(e, t = 0.5, n = 0.5) {
   const i = e.perspective && e.perspective > 0 ? e.perspective : St, r = z(e.x), s = z(e.y);
@@ -1162,13 +1128,13 @@ function be(e) {
   };
 }
 class we {
-  constructor(t, n, i, r) {
-    this.id = t, this.element = n, this.host = i, this.record = r;
-  }
   id;
   element;
   host;
   record;
+  constructor(t, n, i, r) {
+    this.id = t, this.element = n, this.host = i, this.record = r;
+  }
   setTransform(t) {
     Object.assign(this.record.transform, t), this.record.dirty = !0, this.host.refreshLayerCss(this.record), this.host.syncLayerGeometry(this.record), this.host.requestPaint();
   }
@@ -1228,7 +1194,8 @@ class Ee {
     }).catch((i) => {
       this.health = "failed", this.lastError = i instanceof Error ? i.message : String(i), this.webgpuInitError = i;
       const r = this.pendingPaintOnce.splice(0);
-      for (const s of r) s();
+      for (const s of r)
+        s();
       throw i;
     }));
     this.registry = new Kt(n.budgets?.layers ?? 32), this.units = jt(t, (i) => {
@@ -1280,13 +1247,15 @@ class Ee {
   /** True when at least one opaque pixel landed on the surface. */
   frameHasPixels() {
     const { width: t, height: n } = this.canvas;
-    if (t < 1 || n < 1) return !1;
+    if (t < 1 || n < 1)
+      return !1;
     for (let i = 1; i <= 4; i++)
       for (let r = 1; r <= 4; r++) {
         const s = Math.floor(t * r / 5), o = Math.floor(n * i / 5);
         try {
           const { data: a } = this.ctx.getImageData(s, o, 1, 1);
-          if ((a[3] ?? 0) > 0) return !0;
+          if ((a[3] ?? 0) > 0)
+            return !0;
         } catch {
           return !1;
         }
@@ -1298,7 +1267,8 @@ class Ee {
   }
   /** Ask the browser for a paint event (draw happens in that handler). */
   requestBrowserPaint() {
-    if (this.destroyed) return;
+    if (this.destroyed)
+      return;
     const t = this.canvas.requestPaint;
     if (typeof t == "function") {
       t.call(this.canvas);
@@ -1326,7 +1296,8 @@ class Ee {
     this.mutations?.stop(), this.mutations = null, this.detachInputs?.(), this.detachInputs = null, K(this.globalNestedMarks.splice(0)), this.mountRoot = null, this.registry.markAllDirty(), this.requestPaint();
   }
   async admit() {
-    if (this.destroyed) throw new k("host destroyed");
+    if (this.destroyed)
+      throw new k("host destroyed");
     this.health = "pending";
     try {
       const t = await qt();
@@ -1336,14 +1307,12 @@ class Ee {
     }
   }
   layer(t, n = {}) {
-    if (this.destroyed) throw new k("host destroyed");
+    if (this.destroyed)
+      throw new k("host destroyed");
     const i = this.registry.add(t, n);
     if (Wt(t), this.mountRoot && (i.nestedMarks = rt(t), this.metrics.nestedCanvasMarks += i.nestedMarks.length), this.refreshLayerCss(i), this.syncLayerGeometry(i), this.requestPaint(), i.tilt && (i.tilt.x !== 0 || i.tilt.y !== 0)) {
       if (!(t instanceof HTMLElement))
-        throw this.removeLayer(i.id), new x(
-          "tilt-unsupported",
-          "tilt requires an HTMLElement target for the admission witness"
-        );
+        throw this.removeLayer(i.id), new x("tilt-unsupported", "tilt requires an HTMLElement target for the admission witness");
       const r = i.origin === "center" ? 0.5 : i.origin === "top-left" ? 0 : typeof i.origin == "object" ? i.origin.x : 0.5, s = i.origin === "center" ? 0.5 : i.origin === "top-left" ? 0 : typeof i.origin == "object" ? i.origin.y : 0.5, o = this.canvas.style.pointerEvents;
       this.canvas.style.pointerEvents = "auto";
       const a = be({
@@ -1361,10 +1330,7 @@ class Ee {
         }
       });
       if (this.canvas.style.pointerEvents = o, this.metrics.tiltWitnesses += 1, !a.ok)
-        throw this.metrics.tiltWitnessFailures += 1, this.removeLayer(i.id), new x(
-          "tilt-unsupported",
-          `${a.detail}. Browser cannot hit-test this tilt (see ACTIVATION.md / WICG).`
-        );
+        throw this.metrics.tiltWitnessFailures += 1, this.removeLayer(i.id), new x("tilt-unsupported", `${a.detail}. Browser cannot hit-test this tilt (see ACTIVATION.md / WICG).`);
     }
     return this.requestPaint(), new we(i.id, t, this, i);
   }
@@ -1373,16 +1339,12 @@ class Ee {
     n && (this.clearLayerGeometry(n), st(n.element), K(n.nestedMarks), this.registry.markAllDirty(), this.requestPaint());
   }
   refreshLayerCss(t) {
-    t.element instanceof HTMLElement && Rt(
-      t.element,
-      t,
-      this.camera.perspective,
-      this.camera.z
-    );
+    t.element instanceof HTMLElement && Rt(t.element, t, this.camera.perspective, this.camera.z);
   }
   updateGeometry(t, n) {
     const i = this.registry.get(t);
-    if (!i) throw new k(`unknown layer "${t}"`);
+    if (!i)
+      throw new k(`unknown layer "${t}"`);
     n.canvasTransform && (i.canvasTransform = n.canvasTransform), n.canvasClip === null ? delete i.clip : n.canvasClip && (i.clip = n.canvasClip), typeof n.preserveHitTestOrder == "boolean" && (i.preserveHitTestOrder = n.preserveHitTestOrder), i.dirty = !0, this.syncLayerGeometry(i), this.requestPaint();
   }
   clearGeometry(t) {
@@ -1397,7 +1359,8 @@ class Ee {
   syncLayerGeometry(t) {
     Te(t);
     const n = this.canvas;
-    if (typeof n.updateElementGeometry != "function") return;
+    if (typeof n.updateElementGeometry != "function")
+      return;
     const i = {
       preserveHitTestOrder: t.preserveHitTestOrder
     };
@@ -1435,7 +1398,8 @@ class Ee {
       }
   }
   requestPaint() {
-    if (this.destroyed) return;
+    if (this.destroyed)
+      return;
     const t = this.canvas.requestPaint;
     if (typeof t == "function") {
       t.call(this.canvas);
@@ -1481,11 +1445,7 @@ class Ee {
     const n = t.type ?? "image/png", i = this.canvas;
     if (typeof i.toBlob == "function") {
       const s = await new Promise((o) => {
-        i.toBlob(
-          (a) => o(a),
-          n,
-          t.quality
-        );
+        i.toBlob((a) => o(a), n, t.quality);
       });
       if (!s)
         throw new nt(`exportPng: toBlob returned null (${n})`);
@@ -1506,7 +1466,8 @@ class Ee {
     this.pendingPaintOnce.push(r), this.registry.markAllDirty(), this.requestPaint();
   }
   flushPaint(t) {
-    if (this.destroyed) return;
+    if (this.destroyed)
+      return;
     const n = this.registry.all(), i = n.filter((s) => s.dirty);
     if (!t && i.length === 0) {
       if (this.metrics.skippedFrames += 1, this.pendingPaintOnce.length) {
@@ -1520,7 +1481,8 @@ class Ee {
         if (this.webgpuInitError) {
           this.health = "failed", this.lastError = this.webgpuInitError instanceof Error ? this.webgpuInitError.message : String(this.webgpuInitError);
           const a = this.pendingPaintOnce.splice(0);
-          for (const c of a) c();
+          for (const c of a)
+            c();
           return;
         }
         this.webgpuReady?.then(() => this.requestPaint()).catch(() => {
@@ -1542,13 +1504,15 @@ class Ee {
         camera: this.camera,
         onlyDirty: !1
       }), this.metrics.paints += 1, this.metrics.layersDrawn += o, this.metrics.dirtyRedraws += i.length, this.health = "healthy", this.lastError = void 0;
-      for (const a of n) this.syncLayerGeometry(a);
+      for (const a of n)
+        this.syncLayerGeometry(a);
       this.revealIfComplete(o);
     } catch (s) {
       this.health = "failed", this.lastError = s instanceof Error ? s.message : String(s);
     }
     const r = this.pendingPaintOnce.splice(0);
-    for (const s of r) s();
+    for (const s of r)
+      s();
   }
   cssToCanvas(t, n = "x") {
     return t * this.unitState.scale[n];
@@ -1583,13 +1547,15 @@ class Ee {
     });
   }
   async destroy() {
-    if (this.destroyed) return;
+    if (this.destroyed)
+      return;
     this.destroyed = !0, this.raf && cancelAnimationFrame(this.raf), this.raf = 0, this.unmount();
     for (const n of this.registry.all())
       st(n.element), K(n.nestedMarks);
     this.registry.clear(), this.units.stop(), this.webgl?.dispose(), this.webgl = null, this.webgpu?.dispose(), this.webgpu = null, this.paintHandler && (this.canvas.removeEventListener("paint", this.paintHandler), this.paintHandler = null), this.cancelSeamlessEnable(), this.canvas.removeAttribute("content"), delete this.canvas.dataset.figmentHost, this.health = "idle";
     const t = this.pendingPaintOnce.splice(0);
-    for (const n of t) n();
+    for (const n of t)
+      n();
   }
 }
 function Mt(e, t = 1200, n = 0) {
@@ -1627,13 +1593,15 @@ function Pt(e) {
 }
 function Te(e) {
   const t = e.element;
-  if (!(t instanceof HTMLElement)) return;
+  if (!(t instanceof HTMLElement))
+    return;
   if (t.style.transformOrigin = Pt(e.origin), Mt(e), !e.clip) {
     t.style.clipPath = "";
     return;
   }
   const n = e.drawAt ? e.drawAt.x : e.transform.x, i = e.drawAt ? e.drawAt.y : e.transform.y, r = t.getBoundingClientRect(), s = r.width || t.offsetWidth, o = r.height || t.offsetHeight;
-  if (s <= 0 || o <= 0) return;
+  if (s <= 0 || o <= 0)
+    return;
   const a = e.clip.x - n, c = e.clip.y - i, f = a + e.clip.width, l = c + e.clip.height, p = Math.max(0, c), u = Math.max(0, a), d = Math.max(0, s - f), h = Math.max(0, o - l);
   t.style.clipPath = `inset(${p}px ${d}px ${h}px ${u}px)`;
 }
@@ -1641,17 +1609,15 @@ function Se(e) {
   const t = e.indexOf(","), n = e.slice(0, t), i = e.slice(t + 1), r = /data:([^;]+)/.exec(n)?.[1] ?? "application/octet-stream";
   if (n.includes(";base64")) {
     const s = atob(i), o = new Uint8Array(s.length);
-    for (let a = 0; a < s.length; a++) o[a] = s.charCodeAt(a);
+    for (let a = 0; a < s.length; a++)
+      o[a] = s.charCodeAt(a);
     return new Blob([o], { type: r });
   }
   return new Blob([decodeURIComponent(i)], { type: r });
 }
 function Ae(e, t) {
   if (!(e instanceof HTMLCanvasElement))
-    throw new x(
-      "missing-api",
-      "M1 createHost requires an HTMLCanvasElement (OffscreenCanvas in a later milestone)."
-    );
+    throw new x("missing-api", "M1 createHost requires an HTMLCanvasElement (OffscreenCanvas in a later milestone).");
   return new Ee(e, t);
 }
 const Me = /* @__PURE__ */ new Map();

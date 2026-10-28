@@ -2,7 +2,12 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "composite": true
+    "composite": true,
+    "paths": {
+      "@figment/host": ["./packages/host/src/index.ts"],
+      "@figment/gpu": ["./packages/gpu/src/index.ts"],
+      "@figment/ui": ["./packages/ui/src/index.ts"]
+    }
   },
   "include": ["packages/*/src/**/*.ts"]
 }
