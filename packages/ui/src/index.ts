@@ -118,3 +118,13 @@ export {
   FigmentCheckbox,
   registerFormControls,
 } from "./forms.js";
+
+export {
+  FigmentHud,
+  registerHud,
+  type HudMetric,
+} from "./hud.js";
+export {
+  FigmentWorldSpacePanel,
+  registerWorldSpacePanel,
+} from "./world-space-panel.js";
