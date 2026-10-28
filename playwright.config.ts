@@ -104,6 +104,12 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },
+    {
+      command: "pnpm --filter @figment/demo-html-in-canvas-glass dev",
+      port: 5179,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
   ],
   projects: [
     {
